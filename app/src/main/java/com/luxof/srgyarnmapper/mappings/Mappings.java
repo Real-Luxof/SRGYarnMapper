@@ -12,23 +12,29 @@ import org.jspecify.annotations.Nullable;
 
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
+    public MappingClass getClass(String className) {
+        return mappings.get(className);
+    }
     public String translateClass(String className) {
-        return mappings.get(className).name();
+        return getClass(className).name();
     }
     public MappingMethod getMethod(String className, String method) {
-        return mappings.get(className).methods().get(method);
+        return getClass(className).methods().get(method);
     }
     public String translateMethod(String className, String method) {
         return getMethod(className, method).name();
     }
     public MappingField getField(String className, String field) {
-        return mappings.get(className).fields().get(field);
+        return getClass(className).fields().get(field);
     }
     public String translateField(String className, String field) {
         return getField(className, field).name();
     }
     public MappingParameter getParameter(String clazz, String method, String param) {
-        return mappings.get(clazz).methods().get(method).parameters().get(param);
+        return getMethod(clazz, method).parameters().getOrDefault(
+            param,
+            new MappingParameter("", null)
+        );
     }
     public String translateParameter(String clazz, String method, String param) {
         return getParameter(clazz, method, param).name();
@@ -48,25 +54,28 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         });*/
     }
     public String reverseMethod(String className, String outputMethod) {
-        for (var entry : mappings.get(className).methods().entrySet()) {
+        for (var entry : getClass(className).methods().entrySet()) {
             if (outputMethod.equals(entry.getValue().name()))
                 return entry.getKey();
         }
         return null;
     }
     public String reverseField(String className, String outputField) {
-        for (var entry : mappings.get(className).fields().entrySet()) {
+        for (var entry : getClass(className).fields().entrySet()) {
             if (outputField.equals(entry.getValue().name()))
                 return entry.getKey();
         }
         return null;
     }
     public String reverseParameter(String clazz, String method, String outputParam) {
-        for (var entry : mappings.get(clazz).methods().get(method).parameters().entrySet()) {
+        for (var entry : getMethod(clazz, method).parameters().entrySet()) {
             if (outputParam.equals(entry.getValue().name()))
                 return entry.getKey();
         }
-        return null;
+        // i return empty here because the mappings i deal with don't necessarily do all params
+        // but they *do* do all fields and methods
+        // which makes sense if you think about it. params are referenced by number.
+        return "";
     }
 
 
@@ -156,7 +165,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
 
 
-    private static final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|(o (?<parameterName>\\S+) (?<srgpid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\s+static)?))");
+    private static final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\t+static)?)|((?<parameterActualFrom>\\S+) (?<parameterName>\\S+) (?<srgpid>\\d+)))");
     public static Mappings ofTSRG2(String lines) {
         String[] header = lines.split("\n")[0].split(" ");
         MappingEnum left = MappingEnum.fromTSRG2(header[1]);
@@ -237,7 +246,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
             } else if (parameterName != null)
                 currentMethod.parameters().put(
-                    from,
+                    matcher.group("parameterActualFrom"),
                     new MappingParameter(parameterName, Integer.parseInt(matcher.group("srgpid")))
                 );
         }
@@ -269,7 +278,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
             return new Mappings(left, right, Map.copyOf(mappings));
     }
 
-    private static final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(?<from>\\S+)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
+    private static final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
     public static Mappings ofTinyV2(String lines) {
         String[] header = lines.split("\n")[0].split(" ");
         MappingEnum left = MappingEnum.fromTINYV2(header[1]);
