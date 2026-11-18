@@ -15,6 +15,50 @@ public class Mappings {
         this.mappings = mappings;
     }
 
+    public String translateClass(String className) {
+        return mappings.get(className).name();
+    }
+    public MappingMethod getMethod(String className, String method) {
+        return mappings.get(className).methods().get(method);
+    }
+    public String translateMethod(String className, String method) {
+        return getMethod(className, method).name();
+    }
+    public MappingField getField(String className, String field) {
+        return mappings.get(className).fields().get(field);
+    }
+    public String translateField(String className, String field) {
+        return getField(className, field).name();
+    }
+    public String reverseClass(String outputClass) {
+        for (var entry : mappings.entrySet()) {
+            if (outputClass.equals(entry.getValue().name()))
+                return entry.getKey();
+        }
+        // you're not supposed to reach this point, really. at least if you're using actual mappings
+        return null;
+        // special little snowflake. fuckass
+        /*mappings.forEach((key, val) -> {
+            if (outputClass.equals(val.name()))
+                return key;
+        });*/
+    }
+    public String reverseMethod(String className, String outputMethod) {
+        for (var entry : mappings.get(className).methods().entrySet()) {
+            if (outputMethod.equals(entry.getValue().name()))
+                return entry.getKey();
+        }
+        return null;
+    }
+    public String reverseField(String className, String outputField) {
+        for (var entry : mappings.get(className).fields().entrySet()) {
+            if (outputField.equals(entry.getValue().name()))
+                return entry.getKey();
+        }
+        return null;
+    }
+
+
     private static final Pattern TSRGV2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|(o (?<parameterName>\\S+) (?<srgpid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\s+static)?))");
     public static Mappings ofTSRGV2(String lines) {
         Map<String, MappingClass> mappings = new HashMap<>();
@@ -121,7 +165,7 @@ public class Mappings {
             );
 
 
-            return new Mappings(mappings);
+            return new Mappings(Map.copyOf(mappings));
     }
 
     private static final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(?<from>\\S+)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
@@ -233,6 +277,6 @@ public class Mappings {
             );
 
 
-        return new Mappings(mappings);
+        return new Mappings(Map.copyOf(mappings));
     }
 }
