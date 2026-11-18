@@ -1,22 +1,17 @@
 package com.luxof.srgyarnmapper.mappings;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
-public class Mappings {
-    public final Map<String, MappingClass> mappings;
-
-    /** Use one of the static methods instead. */
-    public Mappings(
-        Map<String, MappingClass> mappings
-    ) {
-        this.mappings = mappings;
-    }
-
+/** use one of the static methods to create one of these. */
+public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
     public String translateClass(String className) {
         return mappings.get(className).name();
     }
@@ -75,8 +70,98 @@ public class Mappings {
     }
 
 
+    public String toTSRG2() {
+        // fucking "can't assign in foreach" FUCK YOU
+        List<String> buf = new ArrayList<>(List.of(
+            String.format("tsrg2 %s %s id\n", from.toTSRG2(), to.toTSRG2())
+        ));
+
+        mappings.forEach((clazzKey, clazz) -> {
+            buf.add(String.format("%s %s %d", clazzKey, clazz.name(), clazz.srgID()));
+
+            clazz.fields().forEach((fieldKey, field) -> {
+                buf.add(String.format("\t%s %s %d", fieldKey, field.name(), field.srgID()));
+            });
+
+            clazz.methods().forEach((methodKey, method) -> {
+                buf.add(String.format(
+                    "\t%s %s %s %d",
+                    methodKey,
+                    method.type(),
+                    method.name(),
+                    method.srgID()
+                ));
+
+                if (method.isStatic())
+                    buf.add("\t\tstatic");
+
+                int i = 0;
+                for (var paramEntry : method.parameters().sequencedEntrySet()) {
+                    buf.add(String.format(
+                        "\t\t%d %s %s %d",
+                        i,
+                        paramEntry.getKey(),
+                        paramEntry.getValue().name(),
+                        paramEntry.getValue().srgID()
+                    ));
+                    i++;
+                }
+            });
+        });
+
+        return String.join("\n", buf);
+    }
+
+    public String toTINYV2() {
+        List<String> buf = new ArrayList<>(List.of(
+            String.format("tiny\t2\t0\t%s\t%s"),
+            from.toTINYV2(),
+            to.toTINYV2()
+        ));
+
+        mappings.forEach((clazzKey, clazz) -> {
+            buf.add(String.format("c\t%s\t%s", clazzKey, clazz.name()));
+
+            clazz.fields().forEach((fieldKey, field) -> {
+                buf.add(String.format(
+                    "\tf\t%s\t%s\t%s",
+                    field.type(),
+                    fieldKey,
+                    field.name()
+                ));
+            });
+
+            clazz.methods().forEach((methodKey, method) -> {
+                buf.add(String.format(
+                    "\tm\t%s\t%s\t%s",
+                    method.type(),
+                    methodKey,
+                    method.name()
+                ));
+
+                int i = 0;
+                for (var paramEntry : method.parameters().sequencedEntrySet()) {
+                    buf.add(String.format(
+                        "\t\tp\t%d\t%s\t%s",
+                        i,
+                        paramEntry.getKey(),
+                        paramEntry.getValue().name()
+                    ));
+                    i += 1;
+                }
+            });
+        });
+
+        return String.join("\n", buf);
+    }
+
+
     private static final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|(o (?<parameterName>\\S+) (?<srgpid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\s+static)?))");
     public static Mappings ofTSRG2(String lines) {
+        String[] header = lines.split("\n")[0].split(" ");
+        MappingEnum left = MappingEnum.fromTSRG2(header[1]);
+        MappingEnum right = MappingEnum.fromTSRG2(header[2]);
+
         Map<String, MappingClass> mappings = new HashMap<>();
 
         String currentClassFrom = null;
@@ -100,7 +185,7 @@ public class Mappings {
                     new MappingMethod(
                         matcher.group("methodType"),
                         currentMethod.name(),
-                        Map.copyOf(currentMethod.parameters()),
+                        currentMethod.parameters(),
                         currentMethod.srgID(),
                         currentMethod.isStatic()
                     )
@@ -145,7 +230,7 @@ public class Mappings {
                 currentMethod = new MappingMethod(
                     matcher.group("methodType"),
                     methodName,
-                    new HashMap<>(),
+                    new LinkedHashMap<>(),
                     Integer.parseInt(matcher.group("srgmid")),
                     matcher.group("isStatic") != null
                 );
@@ -164,7 +249,7 @@ public class Mappings {
                 new MappingMethod(
                     currentMethod.type(),
                     currentMethod.name(),
-                    Map.copyOf(currentMethod.parameters()),
+                    currentMethod.parameters(),
                     currentMethod.srgID(),
                     currentMethod.isStatic()
                 )
@@ -181,11 +266,15 @@ public class Mappings {
             );
 
 
-            return new Mappings(Map.copyOf(mappings));
+            return new Mappings(left, right, Map.copyOf(mappings));
     }
 
     private static final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(?<from>\\S+)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
     public static Mappings ofTinyV2(String lines) {
+        String[] header = lines.split("\n")[0].split(" ");
+        MappingEnum left = MappingEnum.fromTINYV2(header[1]);
+        MappingEnum right = MappingEnum.fromTINYV2(header[2]);
+
         Map<String, MappingClass> mappings = new HashMap<>();
 
         String currentClassFrom = null;
@@ -212,7 +301,7 @@ public class Mappings {
                     new MappingMethod(
                         matcher.group("methodType"),
                         currentMethod.name(),
-                        Map.copyOf(currentMethod.parameters()),
+                        currentMethod.parameters(),
                         currentMethod.srgID(),
                         currentMethod.isStatic()
                     )
@@ -257,7 +346,7 @@ public class Mappings {
                 currentMethod = new MappingMethod(
                     type,
                     to,
-                    new HashMap<>(),
+                    new LinkedHashMap<>(),
                     null,
                     null
                 );
@@ -276,7 +365,7 @@ public class Mappings {
                 new MappingMethod(
                     currentMethod.type(),
                     currentMethod.name(),
-                    Map.copyOf(currentMethod.parameters()),
+                    currentMethod.parameters(),
                     currentMethod.srgID(),
                     currentMethod.isStatic()
                 )
@@ -293,7 +382,7 @@ public class Mappings {
             );
 
 
-        return new Mappings(Map.copyOf(mappings));
+        return new Mappings(left, right, Map.copyOf(mappings));
     }
 
     @Nullable
