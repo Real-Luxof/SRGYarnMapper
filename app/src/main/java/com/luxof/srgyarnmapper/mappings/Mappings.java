@@ -75,15 +75,15 @@ public class Mappings {
     }
 
 
-    private static final Pattern TSRGV2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|(o (?<parameterName>\\S+) (?<srgpid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\s+static)?))");
-    public static Mappings ofTSRGV2(String lines) {
+    private static final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|(o (?<parameterName>\\S+) (?<srgpid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\s+static)?))");
+    public static Mappings ofTSRG2(String lines) {
         Map<String, MappingClass> mappings = new HashMap<>();
 
         String currentClassFrom = null;
         MappingClass currentClass = null;
         String currentMethodFrom = null;
         MappingMethod currentMethod = null;
-        Matcher matcher = TSRGV2_PATTERN.matcher(lines);
+        Matcher matcher = TSRG2_PATTERN.matcher(lines);
 
         while (matcher.find()) {
             String from = matcher.group("from");

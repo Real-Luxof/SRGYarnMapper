@@ -33,7 +33,7 @@ public class App {
 
         String version = args[0];
 
-        Mappings srg = Mappings.ofTSRGV2(readNestedFileInZipFromURI(
+        Mappings srg = Mappings.ofTSRG2(readNestedFileInZipFromURI(
             URI.create(String.format(SRG_ZIP_DOWNLOAD, version, version)),
             Path.of("srg.zip"),
             "config/joined.tsrg"
