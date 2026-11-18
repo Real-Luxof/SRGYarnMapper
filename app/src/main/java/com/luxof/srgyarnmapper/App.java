@@ -6,10 +6,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipFile;
 
+import com.luxof.srgyarnmapper.mappings.MappingClass;
+import com.luxof.srgyarnmapper.mappings.MappingField;
+import com.luxof.srgyarnmapper.mappings.MappingMethod;
+import com.luxof.srgyarnmapper.mappings.MappingParameter;
 import com.luxof.srgyarnmapper.mappings.Mappings;
 
 public class App {
@@ -50,6 +56,11 @@ public class App {
             "mappings/mappings.tiny"
         ));
 
+        Mappings srg_to_yarn = swapOutInputOfAForOutputOfBUsingCommonLayerC(
+            intermediary_to_yarn,
+            intermediary,
+            srg
+        );
     }
 
     public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -119,5 +130,105 @@ public class App {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /** usage example:
+     * <br><code>swapOutInputOfAForOutputOfBUsingCommonLayerC(
+     * <br>____intermediary_to_yarn,
+     * <br>____intermediary,
+     * <br>____srg
+     * <br>);</code>
+     * 
+     * <p>i feel like i won't remember how this works after 2 weeks
+     */
+    public static Mappings swapOutInputOfAForOutputOfBUsingCommonLayerC(
+        Mappings A,
+        Mappings C,
+        Mappings B
+    ) {
+        Map<String, MappingClass> output = new HashMap<>();
+
+        for (var classEntry : A.mappings.entrySet()) {
+            String classKey = classEntry.getKey();
+            String commonClassKey = C.reverseClass(classKey);
+            String newClassKey = B.translateClass(commonClassKey);
+
+            MappingClass clazz = classEntry.getValue();
+            Map<String, MappingMethod> methods = new HashMap<>(clazz.methods());
+            Map<String, MappingField> fields = new HashMap<>(clazz.fields());
+
+
+            for (var methodEntry : methods.entrySet()) {
+                String methodKey = methodEntry.getKey();
+                String commonMethodKey = C.reverseMethod(commonClassKey, methodKey);
+                String newMethodKey = B.translateMethod(commonClassKey, commonMethodKey);
+
+                Map<String, MappingParameter> params = new HashMap<>(
+                    methodEntry.getValue().parameters()
+                );
+
+                for (var paramEntry : params.entrySet()) {
+                    String paramKey = paramEntry.getKey();
+                    String commonParamKey = C.reverseParameter(commonClassKey, commonMethodKey, paramKey);
+                    String newParamKey = B.translateParameter(commonClassKey, commonMethodKey, commonParamKey);
+
+                    MappingParameter paramFromA = paramEntry.getValue();
+                    MappingParameter paramFromC = C.getParameter(commonClassKey, commonMethodKey, commonParamKey);
+                    MappingParameter paramFromB = B.getParameter(newClassKey, newMethodKey, newParamKey);
+
+                    // scavenge extra data
+                    params.remove(paramKey);
+                    params.put(
+                        newParamKey,
+                        new MappingParameter(
+                            paramFromA.name(),
+                            Mappings.yoinkSRGID(paramFromA, paramFromC, paramFromB)
+                        )
+                    );
+                }
+
+
+                // scavenge any extra data we can get (like SRG id, type, etcetera)
+                MappingMethod methodFromA = methodEntry.getValue();
+                MappingMethod methodFromC = C.getMethod(commonClassKey, commonMethodKey);
+                MappingMethod methodFromB = B.getMethod(newClassKey, newMethodKey);
+
+                methods.remove(methodKey);
+                methods.put(
+                    newMethodKey,
+                    new MappingMethod(
+                        Mappings.yoinkType(methodFromA, methodFromC, methodFromB),
+                        methodFromA.name(),
+                        Map.copyOf(params),
+                        Mappings.yoinkSRGID(methodFromA, methodFromC, methodFromB),
+                        Mappings.yoinkIsStatic(methodFromA, methodFromC, methodFromB)
+                    )
+                );
+            }
+
+            for (var fieldEntry : fields.entrySet()) {
+                String fieldKey = fieldEntry.getKey();
+
+                String commonFieldKey = C.reverseField(commonClassKey, fieldKey);
+                String newFieldKey = B.translateField(newClassKey, commonFieldKey);
+
+                MappingField fieldFromA = fieldEntry.getValue();
+                MappingField fieldFromC = C.getField(commonClassKey, commonFieldKey);
+                MappingField fieldFromB = B.getField(newClassKey, newFieldKey);
+
+                // mmmm data...
+                fields.remove(fieldKey);
+                fields.put(
+                    newFieldKey,
+                    new MappingField(
+                        Mappings.yoinkType(fieldFromA, fieldFromC, fieldFromB),
+                        fieldFromA.name(),
+                        Mappings.yoinkSRGID(fieldFromA, fieldFromC, fieldFromB)
+                    )
+                );
+            }
+        }
+
+        return new Mappings(Map.copyOf(output));
     }
 }
