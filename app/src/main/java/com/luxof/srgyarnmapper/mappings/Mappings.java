@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.Nullable;
+
 public class Mappings {
     public final Map<String, MappingClass> mappings;
 
@@ -30,6 +32,13 @@ public class Mappings {
     public String translateField(String className, String field) {
         return getField(className, field).name();
     }
+    public MappingParameter getParameter(String clazz, String method, String param) {
+        return mappings.get(clazz).methods().get(method).parameters().get(param);
+    }
+    public String translateParameter(String clazz, String method, String param) {
+        return getParameter(clazz, method, param).name();
+    }
+
     public String reverseClass(String outputClass) {
         for (var entry : mappings.entrySet()) {
             if (outputClass.equals(entry.getValue().name()))
@@ -53,6 +62,13 @@ public class Mappings {
     public String reverseField(String className, String outputField) {
         for (var entry : mappings.get(className).fields().entrySet()) {
             if (outputField.equals(entry.getValue().name()))
+                return entry.getKey();
+        }
+        return null;
+    }
+    public String reverseParameter(String clazz, String method, String outputParam) {
+        for (var entry : mappings.get(clazz).methods().get(method).parameters().entrySet()) {
+            if (outputParam.equals(entry.getValue().name()))
                 return entry.getKey();
         }
         return null;
@@ -278,5 +294,29 @@ public class Mappings {
 
 
         return new Mappings(Map.copyOf(mappings));
+    }
+
+    @Nullable
+    public static Integer yoinkSRGID(SRGIDHolder... holders) {
+        for (SRGIDHolder holder : holders) {
+            if (holder.srgID() != null) return holder.srgID();
+        }
+        return null;
+    }
+
+    @Nullable
+    public static String yoinkType(TypeHolder... holders) {
+        for (TypeHolder holder : holders) {
+            if (holder.type() != null) return holder.type();
+        }
+        return null;
+    }
+
+    @Nullable
+    public static Boolean yoinkIsStatic(MappingMethod... methods) {
+        for (MappingMethod method : methods) {
+            if (method.isStatic() != null) return method.isStatic();
+        }
+        return null;
     }
 }

@@ -9,4 +9,4 @@ public record MappingClass(
     Map<String, MappingField> fields,
     Map<String, MappingMethod> methods,
     @Nullable Integer srgID
-) {}
+) implements SRGIDHolder {}

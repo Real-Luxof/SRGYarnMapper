@@ -10,4 +10,4 @@ public record MappingMethod(
     Map<String, MappingParameter> parameters,
     @Nullable Integer srgID,
     Boolean isStatic
-) {}
+) implements SRGIDHolder, TypeHolder {}

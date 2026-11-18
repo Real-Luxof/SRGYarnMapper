@@ -6,4 +6,4 @@ public record MappingField(
     @Nullable String type,
     String name,
     @Nullable Integer srgID
-) {}
+) implements SRGIDHolder, TypeHolder {}
