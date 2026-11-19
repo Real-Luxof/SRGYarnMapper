@@ -1,5 +1,15 @@
 package com.luxof.srgyarnmapper;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import com.luxof.srgyarnmapper.mappings.MappingClass;
+import com.luxof.srgyarnmapper.mappings.MappingField;
+import com.luxof.srgyarnmapper.mappings.MappingMethod;
+import com.luxof.srgyarnmapper.mappings.MappingParameter;
+import com.luxof.srgyarnmapper.mappings.Mappings;
+
 import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -7,16 +17,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipFile;
-
-import com.luxof.srgyarnmapper.mappings.MappingClass;
-import com.luxof.srgyarnmapper.mappings.MappingField;
-import com.luxof.srgyarnmapper.mappings.MappingMethod;
-import com.luxof.srgyarnmapper.mappings.MappingParameter;
-import com.luxof.srgyarnmapper.mappings.Mappings;
 
 public class App {
     public static final String SRG_ZIP_DOWNLOAD = "https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/%s/mcp_config-%s.zip";
@@ -56,10 +61,17 @@ public class App {
             "mappings/mappings.tiny"
         ));
 
+        Mappings mojmap = Mappings.ofProGuard(yoinkClientTxt(version));
+
         Mappings srg_to_yarn = swapOutInputOfAForOutputOfBUsingCommonLayerC(
             intermediary_to_yarn,
             intermediary,
             srg
+        );
+        Mappings mojmap_to_yarn = swapOutInputOfAForOutputOfBUsingCommonLayerC(
+            intermediary_to_yarn,
+            intermediary,
+            mojmap
         );
     }
 
@@ -140,6 +152,7 @@ public class App {
      * <br>);</code>
      * 
      * <p>i feel like i won't remember how this works after 2 weeks
+     * <p>basically, <code>A = Mapping(X -> Y)</code>. <code>C = Mapping(Z -> X)</code>. <code>D = Mapping(Z -> W)</code>. Returns <code>Mapping(W -> Y)</code>.
      */
     public static Mappings swapOutInputOfAForOutputOfBUsingCommonLayerC(
         Mappings A,
@@ -148,7 +161,7 @@ public class App {
     ) {
         Map<String, MappingClass> output = new HashMap<>();
 
-        for (var classEntry : A.mappings.entrySet()) {
+        for (var classEntry : A.mappings().entrySet()) {
             String classKey = classEntry.getKey();
             String commonClassKey = C.reverseClass(classKey);
             String newClassKey = B.translateClass(commonClassKey);
@@ -163,9 +176,7 @@ public class App {
                 String commonMethodKey = C.reverseMethod(commonClassKey, methodKey);
                 String newMethodKey = B.translateMethod(commonClassKey, commonMethodKey);
 
-                Map<String, MappingParameter> params = new HashMap<>(
-                    methodEntry.getValue().parameters()
-                );
+                LinkedHashMap<String, MappingParameter> params = methodEntry.getValue().parameters();
 
                 for (var paramEntry : params.entrySet()) {
                     String paramKey = paramEntry.getKey();
@@ -199,7 +210,7 @@ public class App {
                     new MappingMethod(
                         Mappings.yoinkType(methodFromA, methodFromC, methodFromB),
                         methodFromA.name(),
-                        Map.copyOf(params),
+                        params,
                         Mappings.yoinkSRGID(methodFromA, methodFromC, methodFromB),
                         Mappings.yoinkIsStatic(methodFromA, methodFromC, methodFromB)
                     )
@@ -227,8 +238,59 @@ public class App {
                     )
                 );
             }
+
+            output.put(
+                newClassKey,
+                new MappingClass(
+                    clazz.name(),
+                    fields,
+                    methods,
+                    clazz.srgID()
+                )
+            );
         }
 
-        return new Mappings(Map.copyOf(output));
+        return new Mappings(B.from(), A.to(), Map.copyOf(output));
+    }
+
+    public static final URI VERSION_MANIFEST_V2_URI = URI.create("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");
+    public static String yoinkClientTxt(String version) {
+        try {
+            URI VERSION_JSON_URI = null;
+            for (
+                JsonElement ele :
+                    JsonParser.parseString(
+                        HTTP_CLIENT.send(
+                            HttpRequest.newBuilder(VERSION_MANIFEST_V2_URI).GET().build(),
+                            HttpResponse.BodyHandlers.ofString()
+                        ).toString()
+                    ).getAsJsonObject().getAsJsonArray("versions")
+            ) {
+                JsonObject obj = ele.getAsJsonObject();
+                if (!obj.get("id").getAsString().equals(version)) continue;
+
+                VERSION_JSON_URI = URI.create(obj.get("url").getAsString());
+                break;
+            }
+
+            return HTTP_CLIENT.send(
+                HttpRequest.newBuilder(
+                    URI.create(JsonParser.parseString(
+                        HTTP_CLIENT.send(
+                            HttpRequest.newBuilder(VERSION_JSON_URI).GET().build(),
+                            HttpResponse.BodyHandlers.ofString()
+                        ).toString()
+                    ).getAsJsonObject()
+                        .getAsJsonObject("downloads")
+                        .getAsJsonObject("client_mappings")
+                        .get("url")
+                        .getAsString())
+                ).GET().build(),
+                HttpResponse.BodyHandlers.ofString()
+            ).toString();
+        } catch (Exception e) {
+            /* surely no exceptions could ever be here... */
+            throw new RuntimeException(e);
+        }
     }
 }
