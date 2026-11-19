@@ -19,7 +19,18 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         return getClass(className).name();
     }
     public MappingMethod getMethod(String className, String method) {
-        return getClass(className).methods().get(method);
+        return getClass(className).methods().computeIfAbsent(
+            method,
+            s -> s.equals("<clinit>") || s.equals("<init>")
+                ? new MappingMethod(
+                    "()" + (s.equals("<clinit>") ? "V" : "L" + className + ";"),
+                    s,
+                    new LinkedHashMap<>(),
+                    null,
+                    s.equals("<clinit>")
+                )
+                : null 
+        );
     }
     public String translateMethod(String className, String method) {
         return getMethod(className, method).name();
@@ -58,6 +69,11 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
             if (outputMethod.equals(entry.getValue().name()))
                 return entry.getKey();
         }
+        // Intermediary (TinyV2) doesn't encode this but ProGuard does <init> and SRG does both
+        // actually the mappings are picky about when they do and don't include these
+        // so just. fallback
+        if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
+            return outputMethod;
         return null;
     }
     public String reverseField(String className, String outputField) {
@@ -392,6 +408,27 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
 
         return new Mappings(left, right, Map.copyOf(mappings));
+    }
+
+    private static final Pattern PROGUARD_PATTERN = Pattern.compile("(\\t*(?<lineAndColumn>\\d+:\\d+:)?(?<type>)\\S+ )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+)");
+    public static Mappings ofProGuard(String lines) {
+        Map<String, MappingClass> mappings = new HashMap<>();
+
+        String currentClassFrom = null;
+        MappingClass currentClass = null;
+        String currentMethodFrom = null;
+        MappingMethod currentMethod = null;
+        Matcher matcher = PROGUARD_PATTERN.matcher(lines);
+
+        while (matcher.find()) {
+            String lineAndColumn = matcher.group("lineAndColumn");
+            String type = matcher.group("type");
+            String to = matcher.group("to");
+            String arguments = matcher.group("arguments");
+            String from = matcher.group("from");
+        }
+
+        return new Mappings(MappingEnum.OBF, MappingEnum.MOJMAP, mappings);
     }
 
     @Nullable
