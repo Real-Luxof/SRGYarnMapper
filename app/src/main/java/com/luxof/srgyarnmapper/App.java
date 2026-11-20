@@ -8,6 +8,7 @@ import com.luxof.srgyarnmapper.mappings.MappingClass;
 import com.luxof.srgyarnmapper.mappings.MappingField;
 import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
+import com.luxof.srgyarnmapper.mappings.MappingParser;
 import com.luxof.srgyarnmapper.mappings.Mappings;
 
 import java.io.File;
@@ -25,7 +26,7 @@ import java.util.zip.ZipFile;
 
 public class App {
     public static final String SRG_ZIP_DOWNLOAD = "https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/%s/mcp_config-%s.zip";
-    public static final String INTERMEDIARY_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/intermediary/%s/%s-v2.jar";
+    public static final String INTERMEDIARY_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/intermediary/%s/intermediary-%s-v2.jar";
     public static final String YARN_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/yarn/%s/%s-v2.jar";
 
     public static void main(String[] args) {
@@ -38,30 +39,39 @@ public class App {
 
         String version = args[0];
 
-        Mappings srg = Mappings.ofTSRG2(readNestedFileInZipFromURI(
-            URI.create(String.format(SRG_ZIP_DOWNLOAD, version, version)),
-            Path.of("srg.zip"),
-            "config/joined.tsrg"
-        ));
+        Mappings srg = Mappings.of(
+            readNestedFileInZipFromURI(
+                URI.create(String.format(SRG_ZIP_DOWNLOAD, version, version)),
+                Path.of("srg.zip"),
+                "config/joined.tsrg"
+            ),
+            MappingParser.TSRG2_PARSER
+        );
 
-        Mappings intermediary = Mappings.ofTinyV2(readNestedFileInZipFromURI(
-            URI.create(String.format(INTERMEDIARY_ZIP_DOWNLOAD, version, version)),
-            Path.of("intermediary.zip"),
-            "mappings/mappings.tiny"
-        ));
+        Mappings intermediary = Mappings.of(
+            readNestedFileInZipFromURI(
+                URI.create(String.format(INTERMEDIARY_ZIP_DOWNLOAD, version, version)),
+                Path.of("intermediary.zip"),
+                "mappings/mappings.tiny"
+            ),
+            MappingParser.TINYV2_PARSER
+        );
 
         String yarnVersionAndBuild = findLatestYarnBuildFor(version);
-        Mappings intermediary_to_yarn = Mappings.ofTinyV2(readNestedFileInZipFromURI(
-            URI.create(String.format(
-                YARN_ZIP_DOWNLOAD,
-                yarnVersionAndBuild,
-                yarnVersionAndBuild
-            )),
-            Path.of("intermediarytoyarn.zip"),
-            "mappings/mappings.tiny"
-        ));
+        Mappings intermediary_to_yarn = Mappings.of(
+            readNestedFileInZipFromURI(
+                URI.create(String.format(
+                    YARN_ZIP_DOWNLOAD,
+                    yarnVersionAndBuild,
+                    yarnVersionAndBuild
+                )),
+                Path.of("intermediarytoyarn.zip"),
+                "mappings/mappings.tiny"
+            ),
+            MappingParser.TINYV2_PARSER
+        );
 
-        Mappings mojmap = Mappings.ofProGuard(yoinkClientTxt(version));
+        Mappings mojmap = Mappings.of(yoinkClientTxt(version), MappingParser.PROGUARD_PARSER);
 
         Mappings srg_to_yarn = swapOutInputOfAForOutputOfBUsingCommonLayerC(
             intermediary_to_yarn,
