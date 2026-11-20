@@ -9,4 +9,8 @@ public record MappingClass(
     Map<String, MappingField> fields,
     Map<String, MappingMethod> methods,
     @Nullable Integer srgID
-) implements SRGIDHolder {}
+) implements SRGIDHolder {
+    public MappingClass withImmutableMaps() {
+        return new MappingClass(name, Map.copyOf(fields), Map.copyOf(methods), srgID);
+    }
+}

@@ -8,3 +8,7 @@ app/bin
 
 # Ignore Kotlin plugin data
 .kotlin
+
+# Uhm
+intermediary.zip
+srg.zip

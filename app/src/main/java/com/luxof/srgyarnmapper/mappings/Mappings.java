@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
@@ -180,12 +178,10 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         return String.join("\n", buf);
     }
 
-
-    private static final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\t+static)?)|((?<parameterActualFrom>\\S+) (?<parameterName>\\S+) (?<srgpid>\\d+)))");
-    public static Mappings ofTSRG2(String lines) {
-        String[] header = lines.split("\n")[0].split(" ");
-        MappingEnum left = MappingEnum.fromTSRG2(header[1]);
-        MappingEnum right = MappingEnum.fromTSRG2(header[2]);
+    public static Mappings of(String lines, MappingParser parser) {
+        parser.beginParsing(lines);
+        MappingEnum left = parser.getLeft();
+        MappingEnum right = parser.getRight();
 
         Map<String, MappingClass> mappings = new HashMap<>();
 
@@ -193,242 +189,51 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         MappingClass currentClass = null;
         String currentMethodFrom = null;
         MappingMethod currentMethod = null;
-        Matcher matcher = TSRG2_PATTERN.matcher(lines);
 
-        while (matcher.find()) {
-            String from = matcher.group("from");
-
-            String className = matcher.group("className");
-            String fieldName = matcher.group("fieldName");
-            String methodName = matcher.group("methodName");
-            String parameterName = matcher.group("parameterName");
-
-
-            if ((className != null || methodName != null) && currentMethod != null) {
-                currentClass.methods().put(
-                    currentMethodFrom,
-                    new MappingMethod(
-                        matcher.group("methodType"),
-                        currentMethod.name(),
-                        currentMethod.parameters(),
-                        currentMethod.srgID(),
-                        currentMethod.isStatic()
-                    )
-                );
-                currentMethodFrom = null;
-                currentMethod = null;
-            }
-
-
-            if (className != null) {
-                if (currentClass != null)
-                    mappings.put(
-                        currentClassFrom,
-                        new MappingClass(
-                            currentClass.name(),
-                            Map.copyOf(currentClass.fields()),
-                            Map.copyOf(currentClass.methods()),
-                            currentClass.srgID()
-                        )
-                    );
-
-                currentClassFrom = from;
-                currentClass = new MappingClass(
-                    className,
-                    new HashMap<>(),
-                    new HashMap<>(),
-                    Integer.parseInt(matcher.group("srgcid"))
-                );
-
-            } else if (fieldName != null)
-                currentClass.fields().put(
-                    from,
-                    new MappingField(
-                        null,
-                        fieldName,
-                        Integer.parseInt(matcher.group("srgfid"))
-                    )
-                );
-
-            else if (methodName != null) {
-                currentMethodFrom = from;
-                currentMethod = new MappingMethod(
-                    matcher.group("methodType"),
-                    methodName,
-                    new LinkedHashMap<>(),
-                    Integer.parseInt(matcher.group("srgmid")),
-                    matcher.group("isStatic") != null
-                );
-
-            } else if (parameterName != null)
-                currentMethod.parameters().put(
-                    matcher.group("parameterActualFrom"),
-                    new MappingParameter(parameterName, Integer.parseInt(matcher.group("srgpid")))
-                );
-        }
-
-
-        if (currentMethod != null)
-            currentClass.methods().put(
-                currentMethodFrom,
-                new MappingMethod(
-                    currentMethod.type(),
-                    currentMethod.name(),
-                    currentMethod.parameters(),
-                    currentMethod.srgID(),
-                    currentMethod.isStatic()
-                )
-            );
-        if (currentClass != null)
-            mappings.put(
-                currentClassFrom,
-                new MappingClass(
-                    currentClass.name(),
-                    Map.copyOf(currentClass.fields()),
-                    Map.copyOf(currentClass.methods()),
-                    currentClass.srgID()
-                )
-            );
-
-
-            return new Mappings(left, right, Map.copyOf(mappings));
-    }
-
-    private static final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
-    public static Mappings ofTinyV2(String lines) {
-        String[] header = lines.split("\n")[0].split(" ");
-        MappingEnum left = MappingEnum.fromTINYV2(header[1]);
-        MappingEnum right = MappingEnum.fromTINYV2(header[2]);
-
-        Map<String, MappingClass> mappings = new HashMap<>();
-
-        String currentClassFrom = null;
-        MappingClass currentClass = null;
-        String currentMethodFrom = null;
-        MappingMethod currentMethod = null;
-        Matcher matcher = TINYV2_PATTERN.matcher(lines);
-
-        while (matcher.find()) {
-
-            String from = matcher.group("from");
-            String type = matcher.group("type");
-            String to = matcher.group("to");
-            String qualifier = matcher.group("qualifier");
-            if (qualifier == null) qualifier = "";
-
+        while (parser.nextTokenExists()) {
+            String from = parser.extractFrom();
 
             if (
-                (qualifier.equals("c") || qualifier.equals("m")) &&
-                currentMethod != null
+                currentMethod != null &&
+                (parser.isClassToken() || parser.isMethodToken())
             ) {
-                currentClass.methods().put(
-                    currentMethodFrom,
-                    new MappingMethod(
-                        matcher.group("methodType"),
-                        currentMethod.name(),
-                        currentMethod.parameters(),
-                        currentMethod.srgID(),
-                        currentMethod.isStatic()
-                    )
-                );
+                currentClass.methods().put(currentMethodFrom, currentMethod);
                 currentMethodFrom = null;
                 currentMethod = null;
             }
 
-
-            if (qualifier.equals("c")) {
+            if (parser.isClassToken()) {
                 if (currentClass != null)
-                    mappings.put(
-                        currentClassFrom,
-                        new MappingClass(
-                            currentClass.name(),
-                            Map.copyOf(currentClass.fields()),
-                            Map.copyOf(currentClass.methods()),
-                            null
-                        )
-                    );
+                    mappings.put(currentClassFrom, currentClass.withImmutableMaps());
 
                 currentClassFrom = from;
-                currentClass = new MappingClass(
-                    to,
-                    new HashMap<>(),
-                    new HashMap<>(),
-                    null
-                );
+                currentClass = parser.extractClass();
 
-            } else if (qualifier.equals("f"))
+            } else if (parser.isFieldToken())
                 currentClass.fields().put(
                     from,
-                    new MappingField(
-                        type,
-                        to,
-                        null
-                    )
+                    parser.extractField()
                 );
 
-            else if (qualifier.equals("m")) {
+            else if (parser.isMethodToken()) {
                 currentMethodFrom = from;
-                currentMethod = new MappingMethod(
-                    type,
-                    to,
-                    new LinkedHashMap<>(),
-                    null,
-                    null
-                );
+                currentMethod = parser.extractMethod();
 
-            } else if (qualifier.equals("p"))
+            } else if (parser.isParamToken())
                 currentMethod.parameters().put(
                     from,
-                    new MappingParameter(to, null)
+                    parser.extractParam()
                 );
         }
 
 
         if (currentMethod != null)
-            currentClass.methods().put(
-                currentMethodFrom,
-                new MappingMethod(
-                    currentMethod.type(),
-                    currentMethod.name(),
-                    currentMethod.parameters(),
-                    currentMethod.srgID(),
-                    currentMethod.isStatic()
-                )
-            );
+            currentClass.methods().put(currentMethodFrom, currentMethod);
         if (currentClass != null)
-            mappings.put(
-                currentClassFrom,
-                new MappingClass(
-                    currentClass.name(),
-                    Map.copyOf(currentClass.fields()),
-                    Map.copyOf(currentClass.methods()),
-                    currentClass.srgID()
-                )
-            );
-
+            mappings.put(currentClassFrom, currentClass.withImmutableMaps());
+        parser.finishParsing();
 
         return new Mappings(left, right, Map.copyOf(mappings));
-    }
-
-    private static final Pattern PROGUARD_PATTERN = Pattern.compile("(\\t*(?<lineAndColumn>\\d+:\\d+:)?(?<type>)\\S+ )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+)");
-    public static Mappings ofProGuard(String lines) {
-        Map<String, MappingClass> mappings = new HashMap<>();
-
-        String currentClassFrom = null;
-        MappingClass currentClass = null;
-        String currentMethodFrom = null;
-        MappingMethod currentMethod = null;
-        Matcher matcher = PROGUARD_PATTERN.matcher(lines);
-
-        while (matcher.find()) {
-            String lineAndColumn = matcher.group("lineAndColumn");
-            String type = matcher.group("type");
-            String to = matcher.group("to");
-            String arguments = matcher.group("arguments");
-            String from = matcher.group("from");
-        }
-
-        return new Mappings(MappingEnum.OBF, MappingEnum.MOJMAP, mappings);
     }
 
     @Nullable
