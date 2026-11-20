@@ -3,6 +3,8 @@ package com.luxof.srgyarnmapper;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.Strictness;
+import com.google.gson.stream.JsonReader;
 
 import com.luxof.srgyarnmapper.mappings.MappingClass;
 import com.luxof.srgyarnmapper.mappings.MappingField;
@@ -12,6 +14,7 @@ import com.luxof.srgyarnmapper.mappings.MappingParser;
 import com.luxof.srgyarnmapper.mappings.Mappings;
 
 import java.io.File;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -27,7 +30,7 @@ import java.util.zip.ZipFile;
 public class App {
     public static final String SRG_ZIP_DOWNLOAD = "https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_config/%s/mcp_config-%s.zip";
     public static final String INTERMEDIARY_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/intermediary/%s/intermediary-%s-v2.jar";
-    public static final String YARN_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/yarn/%s/%s-v2.jar";
+    public static final String YARN_ZIP_DOWNLOAD = "https://maven.fabricmc.net/net/fabricmc/yarn/%s/yarn-%s-v2.jar";
 
     public static void main(String[] args) {
         if (args.length != 1) {
@@ -119,7 +122,7 @@ public class App {
     }
 
     public static final URI YARN_VERSIONS_LIST = URI.create("https://maven.fabricmc.net/net/fabricmc/yarn/");
-    public static final Pattern YARN_VERSIONS_REGEX = Pattern.compile("\\d([^\\+/]+\\+build.\\d/)");
+    public static final Pattern YARN_VERSIONS_REGEX = Pattern.compile("\\d([^\\+/]+\\+build.(?<build>\\d+)/)");
     public static String findLatestYarnBuildFor(String version) {
         try {
             HttpResponse<String> response = HTTP_CLIENT.send(
@@ -139,7 +142,7 @@ public class App {
             while (matcher.find()) {
                 String versionAndBuild = matcher.group();
                 if (!versionAndBuild.startsWith(version)) continue;
-                int build = Integer.parseInt(versionAndBuild.substring(version.length() + 6));
+                int build = Integer.parseInt(matcher.group("build"));
                 biggestBuild = biggestBuild == null
                     ? build
                     : biggestBuild < build ? build : biggestBuild;
@@ -269,7 +272,7 @@ public class App {
             URI VERSION_JSON_URI = null;
             for (
                 JsonElement ele :
-                    JsonParser.parseString(
+                    parseStringToObj(
                         HTTP_CLIENT.send(
                             HttpRequest.newBuilder(VERSION_MANIFEST_V2_URI).GET().build(),
                             HttpResponse.BodyHandlers.ofString()
@@ -285,7 +288,7 @@ public class App {
 
             return HTTP_CLIENT.send(
                 HttpRequest.newBuilder(
-                    URI.create(JsonParser.parseString(
+                    URI.create(parseStringToObj(
                         HTTP_CLIENT.send(
                             HttpRequest.newBuilder(VERSION_JSON_URI).GET().build(),
                             HttpResponse.BodyHandlers.ofString()
@@ -302,5 +305,11 @@ public class App {
             /* surely no exceptions could ever be here... */
             throw new RuntimeException(e);
         }
+    }
+
+    public static JsonObject parseStringToObj(String str) {
+        JsonReader jReader = new JsonReader(StringReader.of(str));
+        jReader.setStrictness(Strictness.LENIENT);
+        return JsonParser.parseReader(jReader).getAsJsonObject();
     }
 }

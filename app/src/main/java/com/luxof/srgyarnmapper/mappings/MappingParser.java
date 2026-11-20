@@ -33,7 +33,7 @@ public interface MappingParser {
     public void finishParsing();
 
     public static MappingParser TINYV2_PARSER = new MappingParser() {
-        public final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))|(c\\t(?<classFrom>\\S+)\\t(?<classTo>\\S+))");
+        public final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
@@ -105,7 +105,7 @@ public interface MappingParser {
         @Override
         public void beginParsing(String lines) {
             this.matcher = TSRG2_PATTERN.matcher(lines);
-            String[] header = lines.split("\n")[0].split("\t");
+            String[] header = lines.split("\n")[0].split(" ");
             this.left = MappingEnum.fromTSRG2(header[1]);
             this.right = MappingEnum.fromTSRG2(header[2]);
         }
