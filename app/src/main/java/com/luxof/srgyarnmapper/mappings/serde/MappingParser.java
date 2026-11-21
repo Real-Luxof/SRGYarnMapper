@@ -260,6 +260,7 @@ public interface MappingParser {
                 case "long" -> "J";
                 case "short" -> "S";
                 case "boolean" -> "Z";
+                case "void" -> "V";
                 default -> "L" + type.replaceAll(Pattern.quote("."), "/") + ";";
             };
         }

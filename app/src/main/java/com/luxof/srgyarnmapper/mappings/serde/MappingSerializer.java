@@ -104,13 +104,13 @@ public interface MappingSerializer {
         }
 
         public String[] separateArgsAndReturnType(String argsAndReturnType) {
-            String[] separated = argsAndReturnType.substring(1).split(")");
+            String[] separated = argsAndReturnType.substring(1).split(Pattern.quote(")"));
             return new String[] {
-                decompileToWeirdArgs(separated[0]),
+                "(" + decompileToWeirdArgs(separated[0]) + ")",
                 decompileToWeirdType(separated[1])
             };
         }
-        public final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("(\\[+)?[BCDFIJSZ]|(L[^;]+);");
+        public final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("\\[*([BCDFIJSZ]|L[^;]+;)");
         public String decompileToWeirdArgs(String args) {
             return String.join(
                 ",",
@@ -126,6 +126,7 @@ public interface MappingSerializer {
                 suffix += "[]";
                 trueNormal = trueNormal.substring(1);
             }
+
             return switch (trueNormal) {
                 case "B" -> "byte";
                 case "C" -> "char";
@@ -135,8 +136,9 @@ public interface MappingSerializer {
                 case "J" -> "long";
                 case "S" -> "short";
                 case "Z" -> "boolean";
+                case "V" -> "void";
                 default -> trueNormal.substring(1, trueNormal.length() - 1)
-                    .replaceAll("/", ".");
+                        .replaceAll("/", ".");
             } + suffix;
         }
     };
