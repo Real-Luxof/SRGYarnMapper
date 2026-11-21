@@ -1,4 +1,10 @@
-package com.luxof.srgyarnmapper.mappings;
+package com.luxof.srgyarnmapper.mappings.serde;
+
+import com.luxof.srgyarnmapper.mappings.MappingClass;
+import com.luxof.srgyarnmapper.mappings.MappingEnum;
+import com.luxof.srgyarnmapper.mappings.MappingField;
+import com.luxof.srgyarnmapper.mappings.MappingMethod;
+import com.luxof.srgyarnmapper.mappings.MappingParameter;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -78,6 +84,7 @@ public interface MappingParser {
         }
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
+                null,
                 this.matcher.group("type"),
                 this.matcher.group("to"),
                 new LinkedHashMap<>(),
@@ -152,6 +159,7 @@ public interface MappingParser {
         }
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
+                null,
                 matcher.group("methodType"),
                 this.matcher.group("methodName"),
                 new LinkedHashMap<>(),
@@ -174,7 +182,7 @@ public interface MappingParser {
     };
 
     public static MappingParser PROGUARD_PARSER = new MappingParser() {
-        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(\\t*(?<lineAndColumn>\\d+:\\d+:)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+)");
+        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(\\t*((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+)");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
@@ -215,6 +223,7 @@ public interface MappingParser {
         }
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
+                this.matcher.group("lineAndColumn"),
                 parseTheseArguments(this.matcher.group("arguments"))
                     + parseThisWeirdType(this.matcher.group("type")),
                 this.matcher.group("to"),

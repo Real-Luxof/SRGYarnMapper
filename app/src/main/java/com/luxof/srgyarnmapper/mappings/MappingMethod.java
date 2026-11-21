@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import org.jspecify.annotations.Nullable;
 
 public record MappingMethod(
+    @Nullable String lineAndColumn,
     @Nullable String type,
     String name,
     LinkedHashMap<String, MappingParameter> parameters,

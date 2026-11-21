@@ -1,12 +1,14 @@
 package com.luxof.srgyarnmapper.mappings;
 
+import com.luxof.srgyarnmapper.mappings.serde.MappingParser;
+
+import org.jspecify.annotations.Nullable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.jspecify.annotations.Nullable;
 
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
@@ -20,7 +22,9 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         return getClass(className).methods().computeIfAbsent(
             method,
             s -> s.equals("<clinit>") || s.equals("<init>")
+                // sometimes they don't provide these two...
                 ? new MappingMethod(
+                    null,
                     "()" + (s.equals("<clinit>") ? "V" : "L" + className + ";"),
                     s,
                     new LinkedHashMap<>(),
@@ -256,6 +260,14 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     public static Boolean yoinkIsStatic(MappingMethod... methods) {
         for (MappingMethod method : methods) {
             if (method.isStatic() != null) return method.isStatic();
+        }
+        return null;
+    }
+
+    @Nullable
+    public static String yoinkLineAndColumn(MappingMethod... methods) {
+        for (MappingMethod method : methods) {
+            if (method.lineAndColumn() != null) return method.lineAndColumn();
         }
         return null;
     }
