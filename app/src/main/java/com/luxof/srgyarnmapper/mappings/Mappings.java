@@ -14,23 +14,23 @@ import java.util.Map;
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
     public MappingClass getClass(String className) {
-        return mappings.get(className);
+        return mappings.get(String.valueOf(className));
     }
     public String translateClass(String className) {
         return getClass(className).name();
     }
     public MappingMethod getMethod(String className, String method) {
-        return getClass(className).methods().computeIfAbsent(
+        return getClass(className).methods().getOrDefault(
             method,
-            s -> s.equals("<clinit>") || s.equals("<init>")
+            method.equals("<clinit>") || method.equals("<init>")
                 // sometimes they don't provide these two...
                 ? new MappingMethod(
                     null,
-                    "()" + (s.equals("<clinit>") ? "V" : "L" + className + ";"),
-                    s,
+                    "()V",
+                    method,
                     new LinkedHashMap<>(),
                     null,
-                    s.equals("<clinit>")
+                    method.equals("<clinit>")
                 )
                 : null 
         );
@@ -56,8 +56,9 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
     public String reverseClass(String outputClass) {
         for (var entry : mappings.entrySet()) {
-            if (outputClass.equals(entry.getValue().name()))
+            if (outputClass.equals(entry.getValue().name())) {
                 return entry.getKey();
+            }
         }
         // you're not supposed to reach this point, really. at least if you're using actual mappings
         return null;

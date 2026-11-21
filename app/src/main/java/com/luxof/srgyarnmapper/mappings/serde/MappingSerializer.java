@@ -110,7 +110,7 @@ public interface MappingSerializer {
                 decompileToWeirdType(separated[1])
             };
         }
-        public final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("(\\[+)?([BCDFIJSZ]|L[^;]+;)");
+        public final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("(\\[+)?[BCDFIJSZ]|(L[^;]+);");
         public String decompileToWeirdArgs(String args) {
             return String.join(
                 ",",

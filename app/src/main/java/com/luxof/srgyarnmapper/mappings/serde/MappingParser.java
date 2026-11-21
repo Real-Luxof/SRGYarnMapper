@@ -134,15 +134,7 @@ public interface MappingParser {
             return this.matcher.group("parameterName") != null;
         }
         @Override public String extractFrom() {
-            String className = this.matcher.group("className");
-            String fieldName = this.matcher.group("fieldName");
-            String methodName = this.matcher.group("methodName");
-            String parameterName = this.matcher.group("parameterName");
-            return className != null ? className
-                : fieldName != null ? fieldName
-                : methodName != null ? methodName
-                : parameterName != null ? parameterName
-                : /* won't reach this case anyway */ null;
+            return this.matcher.group("from");
         }
         @Override public MappingClass extractClass() {
             return new MappingClass(
