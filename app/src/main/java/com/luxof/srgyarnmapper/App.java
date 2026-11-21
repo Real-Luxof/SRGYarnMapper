@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -199,7 +200,11 @@ public class App {
      * <br>);</code>
      * 
      * <p>i feel like i won't remember how this works after 2 weeks
-     * <p>basically, <code>A = Mapping(X -> Y)</code>. <code>C = Mapping(Z -> X)</code>. <code>D = Mapping(Z -> W)</code>. Returns <code>Mapping(W -> Y)</code>.
+     * <p>basically,
+     * <br><code>A =      Y -> Z
+     * <br><code>B = X -> Y
+     * <br><code>C = X -> W
+     * <br><code>O =      W -> Z (what this method returns)
      */
     public static Mappings swapOutInputOfAForOutputOfBUsingCommonLayerC(
         Mappings A,
@@ -210,33 +215,53 @@ public class App {
 
         for (var classEntry : A.mappings().entrySet()) {
             String classKey = classEntry.getKey();
-            System.out.println(classKey);
-            String commonClassKey = C.reverseClass(classKey);
-            String newClassKey = B.translateClass(commonClassKey);
+            String commonClassKey;
+            String newClassKey;
+
+            try {
+                commonClassKey = C.reverseClass(classKey);
+                newClassKey = B.translateClass(commonClassKey);
+            } catch (NullPointerException npe) {
+                // SURELY they had a reason not to cover an ENTIRE CLASS, right?
+                continue;
+            }
 
             MappingClass clazz = classEntry.getValue();
-            Map<String, MappingMethod> methods = new HashMap<>(clazz.methods());
-            Map<String, MappingField> fields = new HashMap<>(clazz.fields());
+            Map<String, MappingMethod> methods = new HashMap<>();
+            Map<String, MappingField> fields = new HashMap<>();
 
 
-            for (var methodEntry : methods.entrySet()) {
+            for (var methodEntry : clazz.methods().entrySet()) {
                 String methodKey = methodEntry.getKey();
-                String commonMethodKey = C.reverseMethod(commonClassKey, methodKey);
-                String newMethodKey = B.translateMethod(commonClassKey, commonMethodKey);
+                String commonMethodKey;
+                String newMethodKey;
+                try {
+                    commonMethodKey = C.reverseMethod(commonClassKey, methodKey);
+                    newMethodKey = B.translateMethod(commonClassKey, commonMethodKey);
+                } catch (NullPointerException npe) {
+                    // if one of the biggest mappings didn't care enough, maybe no one cares...
+                    continue;
+                }
 
-                LinkedHashMap<String, MappingParameter> params = methodEntry.getValue().parameters();
+                LinkedHashMap<String, MappingParameter> params = new LinkedHashMap<>();
 
-                for (var paramEntry : params.entrySet()) {
+                for (var paramEntry : methodEntry.getValue().parameters().entrySet()) {
                     String paramKey = paramEntry.getKey();
-                    String commonParamKey = C.reverseParameter(commonClassKey, commonMethodKey, paramKey);
-                    String newParamKey = B.translateParameter(commonClassKey, commonMethodKey, commonParamKey);
+                    String commonParamKey;
+                    String newParamKey;
+
+                    try {
+                        commonParamKey = C.reverseParameter(commonClassKey, commonMethodKey, paramKey);
+                        newParamKey = B.translateParameter(commonClassKey, commonMethodKey, commonParamKey);
+                    } catch (NullPointerException npe) {
+                        continue;
+                    }
 
                     MappingParameter paramFromA = paramEntry.getValue();
                     MappingParameter paramFromC = C.getParameter(commonClassKey, commonMethodKey, commonParamKey);
-                    MappingParameter paramFromB = B.getParameter(newClassKey, newMethodKey, newParamKey);
+                    MappingParameter paramFromB = B.getParameter(commonClassKey, commonMethodKey, commonParamKey);
 
                     // scavenge extra data
-                    params.remove(paramKey);
                     params.put(
                         newParamKey,
                         new MappingParameter(
@@ -250,9 +275,8 @@ public class App {
                 // scavenge any extra data we can get (like SRG id, type, etcetera)
                 MappingMethod methodFromA = methodEntry.getValue();
                 MappingMethod methodFromC = C.getMethod(commonClassKey, commonMethodKey);
-                MappingMethod methodFromB = B.getMethod(newClassKey, newMethodKey);
+                MappingMethod methodFromB = B.getMethod(commonClassKey, commonMethodKey);
 
-                methods.remove(methodKey);
                 methods.put(
                     newMethodKey,
                     new MappingMethod(
@@ -266,15 +290,20 @@ public class App {
                 );
             }
 
-            for (var fieldEntry : fields.entrySet()) {
+            for (var fieldEntry : clazz.fields().entrySet()) {
                 String fieldKey = fieldEntry.getKey();
-
-                String commonFieldKey = C.reverseField(commonClassKey, fieldKey);
-                String newFieldKey = B.translateField(newClassKey, commonFieldKey);
+                String commonFieldKey;
+                String newFieldKey;
+                try {
+                    commonFieldKey = C.reverseField(commonClassKey, fieldKey);
+                    newFieldKey = B.translateField(commonClassKey, commonFieldKey);
+                } catch (NullPointerException npe) {
+                    continue;
+                }
 
                 MappingField fieldFromA = fieldEntry.getValue();
                 MappingField fieldFromC = C.getField(commonClassKey, commonFieldKey);
-                MappingField fieldFromB = B.getField(newClassKey, newFieldKey);
+                MappingField fieldFromB = B.getField(commonClassKey, commonFieldKey);
 
                 // mmmm data...
                 fields.remove(fieldKey);
