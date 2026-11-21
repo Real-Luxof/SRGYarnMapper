@@ -10,8 +10,8 @@ import com.luxof.srgyarnmapper.mappings.MappingClass;
 import com.luxof.srgyarnmapper.mappings.MappingField;
 import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
-import com.luxof.srgyarnmapper.mappings.MappingParser;
 import com.luxof.srgyarnmapper.mappings.Mappings;
+import com.luxof.srgyarnmapper.mappings.serde.MappingParser;
 
 import java.io.File;
 import java.io.StringReader;
@@ -221,6 +221,7 @@ public class App {
                 methods.put(
                     newMethodKey,
                     new MappingMethod(
+                        Mappings.yoinkLineAndColumn(methodFromA, methodFromC, methodFromB),
                         Mappings.yoinkType(methodFromA, methodFromC, methodFromB),
                         methodFromA.name(),
                         params,
@@ -276,7 +277,7 @@ public class App {
                         HTTP_CLIENT.send(
                             HttpRequest.newBuilder(VERSION_MANIFEST_V2_URI).GET().build(),
                             HttpResponse.BodyHandlers.ofString()
-                        ).toString()
+                        ).body()
                     ).getAsJsonObject().getAsJsonArray("versions")
             ) {
                 JsonObject obj = ele.getAsJsonObject();
@@ -292,7 +293,7 @@ public class App {
                         HTTP_CLIENT.send(
                             HttpRequest.newBuilder(VERSION_JSON_URI).GET().build(),
                             HttpResponse.BodyHandlers.ofString()
-                        ).toString()
+                        ).body()
                     ).getAsJsonObject()
                         .getAsJsonObject("downloads")
                         .getAsJsonObject("client_mappings")
@@ -307,9 +308,9 @@ public class App {
         }
     }
 
-    public static JsonObject parseStringToObj(String str) {
+    public static JsonElement parseStringToObj(String str) {
         JsonReader jReader = new JsonReader(StringReader.of(str));
         jReader.setStrictness(Strictness.LENIENT);
-        return JsonParser.parseReader(jReader).getAsJsonObject();
+        return JsonParser.parseReader(jReader);
     }
 }
