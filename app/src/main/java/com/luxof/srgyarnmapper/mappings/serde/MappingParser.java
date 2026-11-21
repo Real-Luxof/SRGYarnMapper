@@ -39,7 +39,7 @@ public interface MappingParser {
     public void finishParsing();
 
     public static MappingParser TINYV2_PARSER = new MappingParser() {
-        public final Pattern TINYV2_PATTERN = Pattern.compile("^\\s*((?<qualifier>\\S)\\t((?<type>(?=[BCDFIJLSZ\\[])\\S+)\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))");
+        public final Pattern TINYV2_PATTERN = Pattern.compile("(?m)^\\s*((?<qualifier>\\S)\\t((?<type>([BCDFIJLSZ\\[]\\S*)|(\\(\\S+))\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
@@ -48,12 +48,14 @@ public interface MappingParser {
         public void beginParsing(String lines) {
             this.matcher = TINYV2_PATTERN.matcher(lines);
             String[] header = lines.split("\n")[0].split("\t");
-            this.left = MappingEnum.fromTINYV2(header[1]);
-            this.right = MappingEnum.fromTINYV2(header[2]);
+            this.left = MappingEnum.fromTINYV2(header[3]);
+            this.right = MappingEnum.fromTINYV2(header[4]);
         }
         @Override public MappingEnum getLeft() { return this.left; }
         @Override public MappingEnum getRight() { return this.right; }
-        @Override public boolean nextTokenExists() { return this.matcher.find(); }
+        @Override public boolean nextTokenExists() {
+            return this.matcher.find();
+        }
         @Override public boolean isClassToken() {
             return this.matcher.group("qualifier").equals("c");
         }
@@ -182,7 +184,7 @@ public interface MappingParser {
     };
 
     public static MappingParser PROGUARD_PARSER = new MappingParser() {
-        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(\\t*((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+)");
+        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(?m)^(\\h*((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+):?");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;

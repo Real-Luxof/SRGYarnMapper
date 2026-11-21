@@ -22,7 +22,9 @@ public enum MappingEnum {
             case "srg", "searge" -> SRG;
             case "intermediary" -> INTERMEDIARY;
             case "named", "mojmap", "mcp" -> MOJMAP;
-            default -> null;
+            default -> {
+                throw new RuntimeException("Wtf is the header namespace " + headerNamespace + " in TSRG2?");
+            }
         };
     }
 
@@ -41,7 +43,9 @@ public enum MappingEnum {
             case "intermediary" -> INTERMEDIARY;
             case "named" -> YARN;
             case "mojmap" -> MOJMAP;
-            default -> null;
+            default -> {
+                throw new RuntimeException("Wtf is the header namespace " + headerNamespace + " in TinyV2?");
+            }
         };
     }
 }

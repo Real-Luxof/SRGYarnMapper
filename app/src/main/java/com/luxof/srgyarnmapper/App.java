@@ -12,13 +12,16 @@ import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
 import com.luxof.srgyarnmapper.mappings.Mappings;
 import com.luxof.srgyarnmapper.mappings.serde.MappingParser;
+import com.luxof.srgyarnmapper.mappings.serde.MappingSerializer;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -86,6 +89,37 @@ public class App {
             intermediary,
             mojmap
         );
+
+        try {
+            /*Files.writeString(
+                Path.of("joined.tsrg2"),
+                srg.to(MappingSerializer.TSRG2_SERIALIZER)
+            );
+            Files.writeString(
+                Path.of("intermediary.tiny"),
+                intermediary.to(MappingSerializer.TINYV2_SERIALIZER)
+            );
+            Files.writeString(
+                Path.of("yarn.tiny"),
+                intermediary_to_yarn.to(MappingSerializer.TINYV2_SERIALIZER)
+            );
+            Files.writeString(
+                Path.of("client.txt"),
+                mojmap.to(MappingSerializer.PROGUARD_SERIALIZER)
+            );*/
+
+            Files.writeString(
+                Path.of("srgtoyarn.tsrg2"),
+                srg_to_yarn.to(MappingSerializer.TSRG2_SERIALIZER)
+            );
+            Files.writeString(
+                Path.of("mojmaptoyarn.txt"),
+                mojmap_to_yarn.to(MappingSerializer.PROGUARD_SERIALIZER)
+            );
+        } catch (IOException e) {
+            // shouldn't happen
+            throw new RuntimeException(e);
+        }
     }
 
     public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -176,6 +210,7 @@ public class App {
 
         for (var classEntry : A.mappings().entrySet()) {
             String classKey = classEntry.getKey();
+            System.out.println(classKey);
             String commonClassKey = C.reverseClass(classKey);
             String newClassKey = B.translateClass(commonClassKey);
 
@@ -253,6 +288,7 @@ public class App {
                 );
             }
 
+            output.remove(classKey);
             output.put(
                 newClassKey,
                 new MappingClass(
@@ -301,7 +337,7 @@ public class App {
                         .getAsString())
                 ).GET().build(),
                 HttpResponse.BodyHandlers.ofString()
-            ).toString();
+            ).body();
         } catch (Exception e) {
             /* surely no exceptions could ever be here... */
             throw new RuntimeException(e);
