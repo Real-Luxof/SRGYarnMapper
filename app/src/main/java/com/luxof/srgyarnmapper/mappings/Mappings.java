@@ -1,6 +1,7 @@
 package com.luxof.srgyarnmapper.mappings;
 
 import com.luxof.srgyarnmapper.mappings.serde.MappingParser;
+import com.luxof.srgyarnmapper.mappings.serde.MappingSerializer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -97,83 +98,30 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
 
 
-    public String toTSRG2() {
-        // fucking "can't assign in foreach" FUCK YOU
-        List<String> buf = new ArrayList<>(List.of(
-            String.format("tsrg2 %s %s id\n", from.toTSRG2(), to.toTSRG2())
-        ));
+    public String to(MappingSerializer serializer) {
+        List<String> buf = new ArrayList<>(List.of(serializer.getHeading(from, to)));
 
         mappings.forEach((clazzKey, clazz) -> {
-            buf.add(String.format("%s %s %d", clazzKey, clazz.name(), clazz.srgID()));
+            String cL = serializer.serialize(clazzKey, clazz);
+            if (cL != null)
+                buf.add(cL);
 
             clazz.fields().forEach((fieldKey, field) -> {
-                buf.add(String.format("\t%s %s %d", fieldKey, field.name(), field.srgID()));
+                String fL = serializer.serialize(fieldKey, field);
+                if (fL != null)
+                    buf.add(fL);
             });
 
             clazz.methods().forEach((methodKey, method) -> {
-                buf.add(String.format(
-                    "\t%s %s %s %d",
-                    methodKey,
-                    method.type(),
-                    method.name(),
-                    method.srgID()
-                ));
-
-                if (method.isStatic())
-                    buf.add("\t\tstatic");
+                String mL = serializer.serialize(methodKey, method);
+                if (mL != null)
+                    buf.add(mL);
 
                 int i = 0;
                 for (var paramEntry : method.parameters().sequencedEntrySet()) {
-                    buf.add(String.format(
-                        "\t\t%d %s %s %d",
-                        i,
-                        paramEntry.getKey(),
-                        paramEntry.getValue().name(),
-                        paramEntry.getValue().srgID()
-                    ));
-                    i++;
-                }
-            });
-        });
-
-        return String.join("\n", buf);
-    }
-
-    public String toTINYV2() {
-        List<String> buf = new ArrayList<>(List.of(
-            String.format("tiny\t2\t0\t%s\t%s"),
-            from.toTINYV2(),
-            to.toTINYV2()
-        ));
-
-        mappings.forEach((clazzKey, clazz) -> {
-            buf.add(String.format("c\t%s\t%s", clazzKey, clazz.name()));
-
-            clazz.fields().forEach((fieldKey, field) -> {
-                buf.add(String.format(
-                    "\tf\t%s\t%s\t%s",
-                    field.type(),
-                    fieldKey,
-                    field.name()
-                ));
-            });
-
-            clazz.methods().forEach((methodKey, method) -> {
-                buf.add(String.format(
-                    "\tm\t%s\t%s\t%s",
-                    method.type(),
-                    methodKey,
-                    method.name()
-                ));
-
-                int i = 0;
-                for (var paramEntry : method.parameters().sequencedEntrySet()) {
-                    buf.add(String.format(
-                        "\t\tp\t%d\t%s\t%s",
-                        i,
-                        paramEntry.getKey(),
-                        paramEntry.getValue().name()
-                    ));
+                    String pL = serializer.serialize(i, paramEntry.getKey(), paramEntry.getValue());
+                    if (pL != null)
+                        buf.add(pL);
                     i += 1;
                 }
             });
