@@ -208,7 +208,7 @@ public interface MappingParser {
         @Override public String extractFrom() { return this.matcher.group("from"); }
         @Override public MappingClass extractClass() {
             return new MappingClass(
-                this.matcher.group("to"),
+                parseThisWeirdType(this.matcher.group("to")),
                 new HashMap<>(),
                 new HashMap<>(),
                 null
