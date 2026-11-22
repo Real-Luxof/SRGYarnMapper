@@ -266,18 +266,15 @@ public class App {
                 }
 
                 LinkedList<Map.Entry<String, MappingParameter>> paramsO = new LinkedList<>();
+                var paramsA = methodA.parameters();
 
-                for (var paramEntryA : methodA.parameters()) {
-                    // waiting for this to bite me in the ass...
-                    String paramNameY = paramEntryA.getKey();
-                    String paramNameX = C.reverseParameter(clazzNameX, methodNameX, paramNameY);
-                    String paramNameW = B.translateParameter(clazzNameX, methodNameX, paramNameX);
-                    MappingParameter paramA = paramEntryA.getValue();
-                    MappingParameter paramC = C.getParameter(clazzNameX, methodNameX, paramNameX);
-                    MappingParameter paramB = B.getParameter(clazzNameX, methodNameX, paramNameX);
+                for (int paramIdx = 0; paramIdx < paramsA.size(); paramIdx++) {
+                    MappingParameter paramA = A.getParameter(clazzNameY, methodNameY, paramIdx);
+                    MappingParameter paramC = C.getParameter(clazzNameX, methodNameX, paramIdx);
+                    MappingParameter paramB = B.getParameter(clazzNameX, methodNameX, paramIdx);
 
                     paramsO.add(Map.entry(
-                        paramNameW,
+                        paramB.name(),
                         new MappingParameter(
                             paramA.name(),
                             Mappings.yoinkSRGID(paramA, paramC, paramB)

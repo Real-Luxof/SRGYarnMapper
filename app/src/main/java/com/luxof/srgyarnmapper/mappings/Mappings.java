@@ -59,16 +59,11 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     public String translateField(String className, String field) {
         return getField(className, field).name();
     }
-    public MappingParameter getParameter(String clazz, String method, String param) {
-        for (var entry : getMethod(clazz, method).parameters()) {
-            if (entry.getKey().hashCode() == param.hashCode() && entry.getKey().equals(param)) {
-                return entry.getValue();
-            }
-        }
-        return new MappingParameter("", null);
-    }
-    public String translateParameter(String clazz, String method, String param) {
-        return getParameter(clazz, method, param).name();
+    public MappingParameter getParameter(String clazz, String method, int param) {
+        var params = getMethod(clazz, method).parameters();
+        return param < params.size()
+            ? params.get(param).getValue()
+            : new MappingParameter("", null);
     }
 
     public String reverseClass(String outputClass) {
@@ -110,17 +105,6 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         }
         // ughh...
         return outputField;
-    }
-    public String reverseParameter(String clazz, String method, String outputParam) {
-        for (var entry : getMethod(clazz, method).parameters()) {
-            if (outputParam.equals(entry.getValue().name()))
-                return entry.getKey();
-        }
-        // i return empty here because the mappings i deal with don't necessarily do all params
-        // but they *do* do all fields and methods
-        // which makes sense if you think about it. params are referenced by number.
-        // ^^^ two entirely unrelated thoughts? wtf do you mean?
-        return "";
     }
 
 
