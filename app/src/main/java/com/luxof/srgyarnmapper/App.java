@@ -206,129 +206,108 @@ public class App {
      * <br><code>O =      W -> Z (what this method returns)
      */
     public static Mappings swapOutInputOfAForOutputOfBUsingCommonLayerC(
-        Mappings A,
-        Mappings C,
-        Mappings B
+        Mappings A,//     Y -> Z
+        Mappings C,//X -> Y
+        Mappings B //X -> W
     ) {
-        Map<String, MappingClass> output = new HashMap<>();
+        //                W -> Z
+        Map<String, MappingClass> O = new HashMap<>();
 
-        for (var classEntry : A.mappings().entrySet()) {
-            String classKey = classEntry.getKey();
-            String commonClassKey;
-            String newClassKey;
+        for (var clazzEntryA : A.mappings().entrySet()) {
+            String clazzNameY = clazzEntryA.getKey();
+            String clazzNameX = C.reverseClass(clazzNameY);
+            String clazzNameW = B.translateClass(clazzNameX);
+            MappingClass clazzA = clazzEntryA.getValue();
+            MappingClass clazzC = C.getClass(clazzNameX);
+            MappingClass clazzB = B.getClass(clazzNameX);
 
-            try {
-                commonClassKey = C.reverseClass(classKey);
-                newClassKey = B.translateClass(commonClassKey);
-            } catch (NullPointerException npe) {
-                // SURELY they had a reason not to cover an ENTIRE CLASS, right?
-                continue;
-            }
+            HashMap<String, MappingField> fieldsO = new HashMap<>();
+            HashMap<String, MappingMethod> methodsO = new HashMap<>();
 
-            MappingClass clazz = classEntry.getValue();
-            Map<String, MappingMethod> methods = new HashMap<>();
-            Map<String, MappingField> fields = new HashMap<>();
-
-
-            for (var methodEntry : clazz.methods().entrySet()) {
-                String methodKey = methodEntry.getKey();
-                String commonMethodKey;
-                String newMethodKey;
+            for (var fieldEntryA : clazzA.fields().entrySet()) {
+                String fieldNameY = fieldEntryA.getKey();
+                String fieldNameX = C.reverseField(clazzNameX, fieldNameY);
+                String fieldNameW;
+                MappingField fieldA = fieldEntryA.getValue();
+                MappingField fieldC = C.getField(clazzNameX, fieldNameX);
+                MappingField fieldB;
                 try {
-                    commonMethodKey = C.reverseMethod(commonClassKey, methodKey);
-                    newMethodKey = B.translateMethod(commonClassKey, commonMethodKey);
+                    fieldNameW = B.translateField(clazzNameX, fieldNameX);
+                    fieldB = B.getField(clazzNameX, fieldNameX);;
                 } catch (NullPointerException npe) {
-                    // if one of the biggest mappings didn't care enough, maybe no one cares...
-                    continue;
+                    fieldNameW = fieldNameX;
+                    fieldB = new MappingField(null, "", null);
                 }
 
-                LinkedHashMap<String, MappingParameter> params = new LinkedHashMap<>();
+                fieldsO.put(
+                    fieldNameW,
+                    new MappingField(
+                        Mappings.yoinkType(fieldA, fieldC, fieldB),
+                        fieldA.name(),
+                        Mappings.yoinkSRGID(fieldA, fieldC, fieldB)
+                    )
+                );
+            }
 
-                for (var paramEntry : methodEntry.getValue().parameters().entrySet()) {
-                    String paramKey = paramEntry.getKey();
-                    String commonParamKey;
-                    String newParamKey;
+            for (var methodEntryA : clazzA.methods().entrySet()) {
+                String methodNameY = methodEntryA.getKey();
+                String methodNameX = C.reverseMethod(clazzNameX, methodNameY);
+                String methodNameW;
+                MappingMethod methodA = methodEntryA.getValue();
+                MappingMethod methodC = C.getMethod(clazzNameX, methodNameX);
+                MappingMethod methodB;
+                try {
+                    methodNameW = B.translateMethod(clazzNameX, methodNameX);
+                    methodB = B.getMethod(clazzNameX, methodNameX);
+                } catch (NullPointerException npe) {
+                    methodNameW = methodNameX;
+                    methodB = new MappingMethod(null, null, "", new LinkedHashMap<>(), null, null);
+                }
 
-                    try {
-                        commonParamKey = C.reverseParameter(commonClassKey, commonMethodKey, paramKey);
-                        newParamKey = B.translateParameter(commonClassKey, commonMethodKey, commonParamKey);
-                    } catch (NullPointerException npe) {
-                        continue;
-                    }
+                LinkedHashMap<String, MappingParameter> paramsO = new LinkedHashMap<>();
 
-                    MappingParameter paramFromA = paramEntry.getValue();
-                    MappingParameter paramFromC = C.getParameter(commonClassKey, commonMethodKey, commonParamKey);
-                    MappingParameter paramFromB = B.getParameter(commonClassKey, commonMethodKey, commonParamKey);
+                for (var paramEntryA : methodA.parameters().entrySet()) {
+                    String paramNameY = paramEntryA.getKey();
+                    String paramNameX = C.reverseParameter(clazzNameX, methodNameX, paramNameY);
+                    String paramNameW = B.translateParameter(clazzNameX, methodNameX, paramNameX);
+                    MappingParameter paramA = paramEntryA.getValue();
+                    MappingParameter paramC = C.getParameter(clazzNameX, methodNameX, paramNameX);
+                    MappingParameter paramB = B.getParameter(clazzNameX, methodNameX, paramNameX);
 
-                    // scavenge extra data
-                    params.put(
-                        newParamKey,
+                    paramsO.put(
+                        paramNameW,
                         new MappingParameter(
-                            paramFromA.name(),
-                            Mappings.yoinkSRGID(paramFromA, paramFromC, paramFromB)
+                            paramA.name(),
+                            Mappings.yoinkSRGID(paramA, paramC, paramB)
                         )
                     );
                 }
 
-
-                // scavenge any extra data we can get (like SRG id, type, etcetera)
-                MappingMethod methodFromA = methodEntry.getValue();
-                MappingMethod methodFromC = C.getMethod(commonClassKey, commonMethodKey);
-                MappingMethod methodFromB = B.getMethod(commonClassKey, commonMethodKey);
-
-                methods.put(
-                    newMethodKey,
+                methodsO.put(
+                    methodNameW,
                     new MappingMethod(
-                        Mappings.yoinkLineAndColumn(methodFromA, methodFromC, methodFromB),
-                        Mappings.yoinkType(methodFromA, methodFromC, methodFromB),
-                        methodFromA.name(),
-                        params,
-                        Mappings.yoinkSRGID(methodFromA, methodFromC, methodFromB),
-                        Mappings.yoinkIsStatic(methodFromA, methodFromC, methodFromB)
+                        Mappings.yoinkLineAndColumn(methodA, methodC, methodB),
+                        Mappings.yoinkType(methodA, methodC, methodB),
+                        methodA.name(),
+                        paramsO,
+                        Mappings.yoinkSRGID(methodA, methodC, methodB),
+                        Mappings.yoinkIsStatic(methodA, methodC, methodB)
                     )
                 );
             }
 
-            for (var fieldEntry : clazz.fields().entrySet()) {
-                String fieldKey = fieldEntry.getKey();
-                String commonFieldKey;
-                String newFieldKey;
-                try {
-                    commonFieldKey = C.reverseField(commonClassKey, fieldKey);
-                    newFieldKey = B.translateField(commonClassKey, commonFieldKey);
-                } catch (NullPointerException npe) {
-                    continue;
-                }
-
-                MappingField fieldFromA = fieldEntry.getValue();
-                MappingField fieldFromC = C.getField(commonClassKey, commonFieldKey);
-                MappingField fieldFromB = B.getField(commonClassKey, commonFieldKey);
-
-                // mmmm data...
-                fields.remove(fieldKey);
-                fields.put(
-                    newFieldKey,
-                    new MappingField(
-                        Mappings.yoinkType(fieldFromA, fieldFromC, fieldFromB),
-                        fieldFromA.name(),
-                        Mappings.yoinkSRGID(fieldFromA, fieldFromC, fieldFromB)
-                    )
-                );
-            }
-
-            output.remove(classKey);
-            output.put(
-                newClassKey,
+            O.put(
+                clazzNameW,
                 new MappingClass(
-                    clazz.name(),
-                    fields,
-                    methods,
-                    clazz.srgID()
+                    clazzA.name(),
+                    Map.copyOf(fieldsO),
+                    Map.copyOf(methodsO),
+                    Mappings.yoinkSRGID(clazzA, clazzC, clazzB)
                 )
             );
         }
 
-        return new Mappings(B.from(), A.to(), Map.copyOf(output));
+        return new Mappings(B.from(), A.to(), Map.copyOf(O));
     }
 
     public static final URI VERSION_MANIFEST_V2_URI = URI.create("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json");

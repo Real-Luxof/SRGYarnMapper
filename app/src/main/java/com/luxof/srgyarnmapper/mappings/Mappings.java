@@ -61,7 +61,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
             }
         }
         // you're not supposed to reach this point, really. at least if you're using actual mappings
-        return null;
+        throw new RuntimeException("You're not supposed to reach this point, but here we are. " + outputClass);
         // special little snowflake. fuckass
         /*mappings.forEach((key, val) -> {
             if (outputClass.equals(val.name()))
@@ -70,15 +70,14 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
     public String reverseMethod(String className, String outputMethod) {
         for (var entry : getClass(className).methods().entrySet()) {
+            System.out.println(entry.getValue().name());
             if (outputMethod.equals(entry.getValue().name()))
                 return entry.getKey();
         }
-        // Intermediary (TinyV2) doesn't encode this but ProGuard does <init> and SRG does both
-        // actually the mappings are picky about when they do and don't include these
-        // so just. fallback
+        // the mappings are picky about when they do and don't include these
         if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
             return outputMethod;
-        return null;
+        throw new RuntimeException("Wtf " + className + ":" + outputMethod);
     }
     public String reverseField(String className, String outputField) {
         for (var entry : getClass(className).fields().entrySet()) {
@@ -95,6 +94,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         // i return empty here because the mappings i deal with don't necessarily do all params
         // but they *do* do all fields and methods
         // which makes sense if you think about it. params are referenced by number.
+        // ^^^ two entirely unrelated thoughts? wtf do you mean?
         return "";
     }
 
@@ -146,16 +146,12 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         while (parser.nextTokenExists()) {
             String from = parser.extractFrom();
 
-            if (
-                currentMethod != null &&
-                (parser.isClassToken() || parser.isMethodToken())
-            ) {
-                currentClass.methods().put(currentMethodFrom, currentMethod);
-                currentMethodFrom = null;
-                currentMethod = null;
-            }
-
             if (parser.isClassToken()) {
+                if (currentMethod != null) {
+                    currentClass.methods().put(currentMethodFrom, currentMethod);
+                    currentMethodFrom = null;
+                    currentMethod = null;
+                }
                 if (currentClass != null)
                     mappings.put(currentClassFrom, currentClass.withImmutableMaps());
 
@@ -169,6 +165,11 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
                 );
 
             else if (parser.isMethodToken()) {
+                if (currentMethod != null) {
+                    currentClass.methods().put(currentMethodFrom, currentMethod);
+                    currentMethodFrom = null;
+                    currentMethod = null;
+                }
                 currentMethodFrom = from;
                 currentMethod = parser.extractMethod();
 
