@@ -57,7 +57,7 @@ public interface MappingSerializer {
                 method.type(),
                 method.name(),
                 method.srgID(),
-                method.isStatic() ? "\n\t\tstatic" : ""
+                (method.isStatic() != null && method.isStatic()) ? "\n\t\tstatic" : ""
             );
         }
         @Override public @Nullable String serialize(int no, String paramKey, MappingParameter param) {

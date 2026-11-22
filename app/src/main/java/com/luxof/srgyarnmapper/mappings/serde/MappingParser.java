@@ -7,7 +7,7 @@ import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
 
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -73,7 +73,7 @@ public interface MappingParser {
             return new MappingClass(
                 this.matcher.group("to"),
                 new HashMap<>(),
-                new HashMap<>(),
+                new LinkedList<>(),
                 null
             );
         }
@@ -89,7 +89,7 @@ public interface MappingParser {
                 null,
                 this.matcher.group("type"),
                 this.matcher.group("to"),
-                new LinkedHashMap<>(),
+                new LinkedList<>(),
                 null,
                 null
             );
@@ -140,7 +140,7 @@ public interface MappingParser {
             return new MappingClass(
                 this.matcher.group("className"),
                 new HashMap<>(),
-                new HashMap<>(),
+                new LinkedList<>(),
                 Integer.parseInt(matcher.group("srgcid"))
             );
         }
@@ -156,7 +156,7 @@ public interface MappingParser {
                 null,
                 matcher.group("methodType"),
                 this.matcher.group("methodName"),
-                new LinkedHashMap<>(),
+                new LinkedList<>(),
                 Integer.parseInt(matcher.group("srgmid")),
                 matcher.group("isStatic") != null
             );
@@ -204,7 +204,7 @@ public interface MappingParser {
             return new MappingClass(
                 parseThisWeirdType(this.matcher.group("to")),
                 new HashMap<>(),
-                new HashMap<>(),
+                new LinkedList<>(),
                 null
             );
         }
@@ -221,7 +221,7 @@ public interface MappingParser {
                 parseTheseArguments(this.matcher.group("arguments"))
                     + parseThisWeirdType(this.matcher.group("type")),
                 this.matcher.group("to"),
-                new LinkedHashMap<>(),
+                new LinkedList<>(),
                 null,
                 null
             );

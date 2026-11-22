@@ -7,48 +7,65 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
     public MappingClass getClass(String className) {
-        return mappings.get(String.valueOf(className));
+        return mappings.getOrDefault(
+            String.valueOf(className),
+            // just to satisfy SRG ID wanters
+            new MappingClass(className, Map.of(), List.of(), null)
+        );
     }
     public String translateClass(String className) {
         return getClass(className).name();
     }
     public MappingMethod getMethod(String className, String method) {
-        return getClass(className).methods().getOrDefault(
-            method,
-            method.equals("<clinit>") || method.equals("<init>")
-                // sometimes they don't provide these two...
-                ? new MappingMethod(
-                    null,
-                    "()V",
-                    method,
-                    new LinkedHashMap<>(),
-                    null,
-                    method.equals("<clinit>")
-                )
-                : null 
-        );
+        for (var entry : getClass(className).methods()) {
+            // stringcmp gets tiring for the 'puter
+            if (
+                entry.getKey().hashCode() == method.hashCode() &&
+                entry.getKey().equals(method)
+            ) {
+                return entry.getValue();
+            }
+        }
+        // sometimes they don't provide these two...
+        return method.equals("<clinit>") || method.equals("<init>")
+            ? new MappingMethod(
+                null,
+                "()V",
+                method,
+                List.of(),
+                null,
+                method.equals("<clinit>")
+            )
+            // see reverseMethod's reason for doing something like this
+            : new MappingMethod(
+                null, "()V", method, List.of(), null, null
+            );
     }
     public String translateMethod(String className, String method) {
         return getMethod(className, method).name();
     }
     public MappingField getField(String className, String field) {
-        return getClass(className).fields().get(field);
+        return getClass(className).fields().getOrDefault(
+            field,
+            new MappingField(null, field, null)
+        );
     }
     public String translateField(String className, String field) {
         return getField(className, field).name();
     }
     public MappingParameter getParameter(String clazz, String method, String param) {
-        return getMethod(clazz, method).parameters().getOrDefault(
-            param,
-            new MappingParameter("", null)
-        );
+        for (var entry : getMethod(clazz, method).parameters()) {
+            if (entry.getKey().hashCode() == param.hashCode() && entry.getKey().equals(param)) {
+                return entry.getValue();
+            }
+        }
+        return new MappingParameter("", null);
     }
     public String translateParameter(String clazz, String method, String param) {
         return getParameter(clazz, method, param).name();
@@ -61,7 +78,9 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
             }
         }
         // you're not supposed to reach this point, really. at least if you're using actual mappings
-        throw new RuntimeException("You're not supposed to reach this point, but here we are. " + outputClass);
+        // DontObfuscate is covered in Yarn but not Intermediary...
+        return outputClass;
+        //throw new RuntimeException("You're not supposed to reach this point, but here we are. " + outputClass);
         // special little snowflake. fuckass
         /*mappings.forEach((key, val) -> {
             if (outputClass.equals(val.name()))
@@ -69,25 +88,31 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         });*/
     }
     public String reverseMethod(String className, String outputMethod) {
-        for (var entry : getClass(className).methods().entrySet()) {
-            System.out.println(entry.getValue().name());
-            if (outputMethod.equals(entry.getValue().name()))
+        for (var entry : getClass(className).methods()) {
+            if (
+                entry.getValue().name().hashCode() == outputMethod.hashCode() &&
+                entry.getValue().name().equals(outputMethod)
+            )
                 return entry.getKey();
         }
-        // the mappings are picky about when they do and don't include these
-        if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
+        // the mappings are picky about when they do and don't include <init> and <clinit>
+        // and sometimes they skip certain methods (like valueOf() and shouldSkip()) because
+        // they're already named
+        return outputMethod;
+        /*if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
             return outputMethod;
-        throw new RuntimeException("Wtf " + className + ":" + outputMethod);
+        throw new RuntimeException("Wtf " + className + ":" + outputMethod);*/
     }
     public String reverseField(String className, String outputField) {
         for (var entry : getClass(className).fields().entrySet()) {
             if (outputField.equals(entry.getValue().name()))
                 return entry.getKey();
         }
-        return null;
+        // ughh...
+        return outputField;
     }
     public String reverseParameter(String clazz, String method, String outputParam) {
-        for (var entry : getMethod(clazz, method).parameters().entrySet()) {
+        for (var entry : getMethod(clazz, method).parameters()) {
             if (outputParam.equals(entry.getValue().name()))
                 return entry.getKey();
         }
@@ -113,13 +138,15 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
                     buf.add(fL);
             });
 
-            clazz.methods().forEach((methodKey, method) -> {
+            clazz.methods().forEach(entry -> {
+                String methodKey = entry.getKey();
+                MappingMethod method = entry.getValue();
                 String mL = serializer.serialize(methodKey, method);
                 if (mL != null)
                     buf.add(mL);
 
                 int i = 0;
-                for (var paramEntry : method.parameters().sequencedEntrySet()) {
+                for (var paramEntry : method.parameters()) {
                     String pL = serializer.serialize(i, paramEntry.getKey(), paramEntry.getValue());
                     if (pL != null)
                         buf.add(pL);
@@ -136,6 +163,8 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         MappingEnum left = parser.getLeft();
         MappingEnum right = parser.getRight();
 
+        System.out.printf("Parsing mappings %s -> %s!\n", left.toString(), right.toString());
+
         Map<String, MappingClass> mappings = new HashMap<>();
 
         String currentClassFrom = null;
@@ -148,7 +177,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
             if (parser.isClassToken()) {
                 if (currentMethod != null) {
-                    currentClass.methods().put(currentMethodFrom, currentMethod);
+                    currentClass.methods().add(Map.entry(currentMethodFrom, currentMethod.immut()));
                     currentMethodFrom = null;
                     currentMethod = null;
                 }
@@ -166,7 +195,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
             else if (parser.isMethodToken()) {
                 if (currentMethod != null) {
-                    currentClass.methods().put(currentMethodFrom, currentMethod);
+                    currentClass.methods().add(Map.entry(currentMethodFrom, currentMethod.immut()));
                     currentMethodFrom = null;
                     currentMethod = null;
                 }
@@ -174,15 +203,15 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
                 currentMethod = parser.extractMethod();
 
             } else if (parser.isParamToken())
-                currentMethod.parameters().put(
+                currentMethod.parameters().add(Map.entry(
                     from,
                     parser.extractParam()
-                );
+                ));
         }
 
 
         if (currentMethod != null)
-            currentClass.methods().put(currentMethodFrom, currentMethod);
+            currentClass.methods().add(Map.entry(currentMethodFrom, currentMethod));
         if (currentClass != null)
             mappings.put(currentClassFrom, currentClass.withImmutableMaps());
         parser.finishParsing();

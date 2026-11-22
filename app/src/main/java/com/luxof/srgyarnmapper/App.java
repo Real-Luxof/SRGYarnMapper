@@ -24,7 +24,8 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -222,7 +223,7 @@ public class App {
             MappingClass clazzB = B.getClass(clazzNameX);
 
             HashMap<String, MappingField> fieldsO = new HashMap<>();
-            HashMap<String, MappingMethod> methodsO = new HashMap<>();
+            LinkedList<Map.Entry<String, MappingMethod>> methodsO = new LinkedList<>();
 
             for (var fieldEntryA : clazzA.fields().entrySet()) {
                 String fieldNameY = fieldEntryA.getKey();
@@ -249,7 +250,7 @@ public class App {
                 );
             }
 
-            for (var methodEntryA : clazzA.methods().entrySet()) {
+            for (var methodEntryA : clazzA.methods()) {
                 String methodNameY = methodEntryA.getKey();
                 String methodNameX = C.reverseMethod(clazzNameX, methodNameY);
                 String methodNameW;
@@ -261,12 +262,13 @@ public class App {
                     methodB = B.getMethod(clazzNameX, methodNameX);
                 } catch (NullPointerException npe) {
                     methodNameW = methodNameX;
-                    methodB = new MappingMethod(null, null, "", new LinkedHashMap<>(), null, null);
+                    methodB = new MappingMethod(null, null, "", new LinkedList<>(), null, null);
                 }
 
-                LinkedHashMap<String, MappingParameter> paramsO = new LinkedHashMap<>();
+                LinkedList<Map.Entry<String, MappingParameter>> paramsO = new LinkedList<>();
 
-                for (var paramEntryA : methodA.parameters().entrySet()) {
+                for (var paramEntryA : methodA.parameters()) {
+                    // waiting for this to bite me in the ass...
                     String paramNameY = paramEntryA.getKey();
                     String paramNameX = C.reverseParameter(clazzNameX, methodNameX, paramNameY);
                     String paramNameW = B.translateParameter(clazzNameX, methodNameX, paramNameX);
@@ -274,26 +276,26 @@ public class App {
                     MappingParameter paramC = C.getParameter(clazzNameX, methodNameX, paramNameX);
                     MappingParameter paramB = B.getParameter(clazzNameX, methodNameX, paramNameX);
 
-                    paramsO.put(
+                    paramsO.add(Map.entry(
                         paramNameW,
                         new MappingParameter(
                             paramA.name(),
                             Mappings.yoinkSRGID(paramA, paramC, paramB)
                         )
-                    );
+                    ));
                 }
 
-                methodsO.put(
+                methodsO.add(Map.entry(
                     methodNameW,
                     new MappingMethod(
                         Mappings.yoinkLineAndColumn(methodA, methodC, methodB),
                         Mappings.yoinkType(methodA, methodC, methodB),
                         methodA.name(),
-                        paramsO,
+                        List.copyOf(paramsO),
                         Mappings.yoinkSRGID(methodA, methodC, methodB),
                         Mappings.yoinkIsStatic(methodA, methodC, methodB)
                     )
-                );
+                ));
             }
 
             O.put(
@@ -301,7 +303,7 @@ public class App {
                 new MappingClass(
                     clazzA.name(),
                     Map.copyOf(fieldsO),
-                    Map.copyOf(methodsO),
+                    List.copyOf(methodsO),
                     Mappings.yoinkSRGID(clazzA, clazzC, clazzB)
                 )
             );
