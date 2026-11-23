@@ -230,6 +230,7 @@ public class App {
                 String fieldNameX = C.reverseField(clazzNameX, fieldNameY);
                 String fieldNameW;
                 MappingField fieldA = fieldEntryA.getValue();
+                String fieldTypeX = fieldA.type();
                 MappingField fieldC = C.getField(clazzNameX, fieldNameX);
                 MappingField fieldB;
                 try {
@@ -243,7 +244,12 @@ public class App {
                 fieldsO.put(
                     fieldNameW,
                     new MappingField(
-                        fieldC.type(),
+                        // OH MY FUCKING GOD BRUH com/mojang/blaze3d/platform/GlStateManager$SourceFactor
+                        fieldC.type() != null
+                            ? fieldC.type()
+                            : fieldTypeX.startsWith("L")
+                                ? "L" + C.reverseClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
+                                : fieldTypeX,
                         fieldA.name(),
                         Mappings.yoinkSRGID(fieldA, fieldC, fieldB)
                     )

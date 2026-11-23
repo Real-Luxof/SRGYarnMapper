@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
@@ -111,7 +112,11 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
     public String reverseField(String className, String outputField) {
         for (var entry : getClass(className).fields().entrySet()) {
-            if (outputField.equals(entry.getValue().name()))
+            String fieldName = entry.getValue().name();
+            if (
+                fieldName.hashCode() == outputField.hashCode() &&
+                fieldName.equals(outputField)
+            )
                 return entry.getKey();
         }
         // ughh...
@@ -216,32 +221,23 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
     @Nullable
     public static Integer yoinkSRGID(SRGIDHolder... holders) {
-        for (SRGIDHolder holder : holders) {
-            if (holder.srgID() != null) return holder.srgID();
-        }
-        return null;
-    }
-
-    @Nullable
-    public static String yoinkType(MappingField... fields) {
-        for (MappingField field : fields) {
-            if (field.type() != null) return field.type();
-        }
-        return null;
+        return yoinkNonNull(Stream.of(holders).map(h -> h.srgID()));
     }
 
     @Nullable
     public static Boolean yoinkIsStatic(MappingMethod... methods) {
-        for (MappingMethod method : methods) {
-            if (method.isStatic() != null) return method.isStatic();
-        }
-        return null;
+        return yoinkNonNull(Stream.of(methods).map(m -> m.isStatic()));
     }
 
     @Nullable
     public static String yoinkLineAndColumn(MappingMethod... methods) {
-        for (MappingMethod method : methods) {
-            if (method.lineAndColumn() != null) return method.lineAndColumn();
+        return yoinkNonNull(Stream.of(methods).map(m -> m.lineAndColumn()));
+    }
+
+    @Nullable
+    public static <T extends Object> T yoinkNonNull(Stream<T> objs) {
+        for (T obj : objs.toList()) {
+            if (obj != null) return obj;
         }
         return null;
     }
