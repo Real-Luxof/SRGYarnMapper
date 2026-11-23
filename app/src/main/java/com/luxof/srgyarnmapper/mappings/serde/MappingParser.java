@@ -144,7 +144,7 @@ public interface MappingParser {
     };
 
     public static MappingParser TSRG2_PARSER = new MappingParser() {
-        public final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\t+static)?)|((?<parameterActualFrom>\\S+) (?<parameterName>\\S+) (?<srgpid>\\d+)))");
+        public final Pattern TSRG2_PATTERN = Pattern.compile("(?m)(?<obviouslyAClass>^(?=\\S))?((?<paramIdx>\\d+) )?(?<from>\\S+) ((?<type>\\(\\S+) )?(?<to>\\S+) (?<srgID>\\d+)(?<isStatic>\\n\\t\\tstatic)?");
         public final Pattern TSRG2_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<from>\\S+) (?<to>\\S+)");
         public Matcher matcher;
         public MappingEnum left;
@@ -166,49 +166,49 @@ public interface MappingParser {
         @Override public MappingEnum getRight() { return this.right; }
         @Override public boolean nextTokenExists() { return this.matcher.find(); }
         @Override public boolean isClassToken() {
-            return this.matcher.group("className") != null;
+            return this.matcher.group("obviouslyAClass") != null;
         }
         @Override public boolean isFieldToken() {
-            return this.matcher.group("fieldName") != null;
+            return this.matcher.group("obviouslyAClass") == null && this.matcher.group("type") == null && this.matcher.group("paramIdx") == null;
         }
         @Override public boolean isMethodToken() {
-            return this.matcher.group("methodName") != null;
+            return this.matcher.group("type") != null;
         }
         @Override public boolean isParamToken() {
-            return this.matcher.group("parameterName") != null;
+            return this.matcher.group("paramIdx") != null;
         }
         @Override public String extractFrom() {
             return this.matcher.group("from")
-                + (isMethodToken() ? matcher.group("methodType") : "");
+                + (isMethodToken() ? matcher.group("type") : "");
         }
         @Override public MappingClass extractClass() {
             return new MappingClass(
-                this.matcher.group("className"),
+                this.matcher.group("to"),
                 new HashMap<>(),
                 new LinkedList<>(),
-                Integer.parseInt(matcher.group("srgcid"))
+                Integer.parseInt(matcher.group("srgID"))
             );
         }
         @Override public MappingField extractField() {
             return new MappingField(
                 null,
-                this.matcher.group("fieldName"),
-                Integer.parseInt(matcher.group("srgfid"))
+                this.matcher.group("to"),
+                Integer.parseInt(matcher.group("srgID"))
             );
         }
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
                 null,
-                this.matcher.group("methodName") + translateMethodType(matcher.group("methodType")),
+                this.matcher.group("to") + translateMethodType(matcher.group("type")),
                 new LinkedList<>(),
-                Integer.parseInt(matcher.group("srgmid")),
+                Integer.parseInt(matcher.group("srgID")),
                 matcher.group("isStatic") != null
             );
         }
         @Override public MappingParameter extractParam() {
             return new MappingParameter(
-                this.matcher.group("parameterName"),
-                Integer.parseInt(matcher.group("srgpid"))
+                this.matcher.group("to"),
+                Integer.parseInt(matcher.group("srgID"))
             );
         }
         @Override
