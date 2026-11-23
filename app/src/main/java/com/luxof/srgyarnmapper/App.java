@@ -245,7 +245,7 @@ public class App {
                     fieldNameW,
                     new MappingField(
                         // OH MY FUCKING GOD BRUH com/mojang/blaze3d/platform/GlStateManager$SourceFactor
-                        fieldC.type() != null
+                        fieldC != null
                             ? fieldC.type()
                             : fieldTypeX.startsWith("L")
                                 ? "L" + C.reverseClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"

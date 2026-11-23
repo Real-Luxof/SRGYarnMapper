@@ -32,7 +32,7 @@ public interface MappingSerializer {
         }
         @Override public @Nullable String serialize(String methodKey, MappingMethod method) {
             String[] nameAndType = method.name().split("\\(");
-            return String.format("\tm\t%s\t%s\t%s", "(" + nameAndType[1], methodKey, nameAndType[0]);
+            return String.format("\tm\t%s\t%s\t%s", "(" + nameAndType[1], methodKey.substring(0, methodKey.indexOf("(")), nameAndType[0]);
         }
         @Override public @Nullable String serialize(int no, String paramKey, MappingParameter param) {
             return String.format("\t\tp\t%d\t%s\t%s", no, paramKey, param.name());
@@ -57,7 +57,7 @@ public interface MappingSerializer {
             String[] nameAndType = method.name().split("\\(");
             return String.format(
                 "\t%s %s %s %d%s",
-                methodKey,
+                methodKey.substring(0, methodKey.indexOf("(")),
                 "(" + nameAndType[1],
                 nameAndType[0],
                 method.srgID(),
@@ -100,9 +100,9 @@ public interface MappingSerializer {
                 "    %s:%s %s%s -> %s",
                 method.lineAndColumn(),
                 argsAndReturnType[1],
-                method.name(),
+                method.name().substring(0, method.name().indexOf("(")),
                 argsAndReturnType[0],
-                methodKey
+                methodKey.subSequence(0, methodKey.indexOf("("))
             );
         }
         @Override public @Nullable String serialize(int no, String paramKey, MappingParameter param) {

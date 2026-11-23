@@ -56,10 +56,11 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         return getMethod(className, method).name();
     }
     public MappingField getField(String className, String field) {
-        return getClass(className).fields().getOrDefault(
-            field,
-            new MappingField(null, field, null)
-        );
+        return getClass(className).fields().get(field);
+        //return getClass(className).fields().getOrDefault(
+        //    field,
+        //    new MappingField(null, field, null)
+        //);
     }
     public String translateField(String className, String field) {
         return getField(className, field).name();
@@ -100,12 +101,12 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         String outputArgs = outputMethodPieces[1];
         String outputReturn = outputMethodPieces[2];
 
-        return outputMethodPieces[0] +
+        return outputMethodPieces[0] + "(" +
             String.join("", ARGS_SEPERATOR_REGEX.matcher(outputArgs).results()
                 .map(r -> r.group())
                 .map(s -> s.startsWith("L") ? "L" + reverseClass(s.substring(1, s.length() - 1)) + ";" : s)
                 .toList())
-            + (outputReturn.startsWith("L") ? "L" + reverseClass(outputReturn.substring(1, outputReturn.length() - 1)) + ";" : outputReturn);
+            + ")" + (outputReturn.startsWith("L") ? "L" + reverseClass(outputReturn.substring(1, outputReturn.length() - 1)) + ";" : outputReturn);
         //if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
         //    return outputMethod;
         //throw new RuntimeException("Wtf " + className + ":" + outputMethod);
@@ -220,8 +221,8 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
 
     @Nullable
-    public static Integer yoinkSRGID(SRGIDHolder... holders) {
-        return yoinkNonNull(Stream.of(holders).map(h -> h.srgID()));
+    public static Integer yoinkSRGID(@Nullable SRGIDHolder... holders) {
+        return yoinkNonNull(Stream.of(holders).flatMap(h -> h != null ? Stream.of(h.srgID()) : Stream.of()));
     }
 
     @Nullable
