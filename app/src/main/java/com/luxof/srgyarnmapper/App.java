@@ -245,10 +245,10 @@ public class App {
                     fieldNameW,
                     new MappingField(
                         // OH MY FUCKING GOD BRUH com/mojang/blaze3d/platform/GlStateManager$SourceFactor
-                        fieldC != null
-                            ? fieldC.type()
+                        fieldB != null
+                            ? fieldB.type()
                             : fieldTypeX.startsWith("L")
-                                ? "L" + C.reverseClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
+                                ? "L" + B.translateClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
                                 : fieldTypeX,
                         fieldA.name(),
                         Mappings.yoinkSRGID(fieldA, fieldC, fieldB)
