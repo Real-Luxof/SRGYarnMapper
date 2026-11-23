@@ -99,7 +99,10 @@ public interface MappingParser {
         @Override public boolean isParamToken() {
             return this.matcher.group("qualifier").equals("p");
         }
-        @Override public String extractFrom() { return this.matcher.group("from"); }
+        @Override public String extractFrom() {
+            return this.matcher.group("from")
+                + (isMethodToken() ? this.matcher.group("type") : "");
+        }
         @Override public MappingClass extractClass() {
             return new MappingClass(
                 this.matcher.group("to"),
@@ -175,7 +178,8 @@ public interface MappingParser {
             return this.matcher.group("parameterName") != null;
         }
         @Override public String extractFrom() {
-            return this.matcher.group("from");
+            return this.matcher.group("from")
+                + (isMethodToken() ? matcher.group("methodType") : "");
         }
         @Override public MappingClass extractClass() {
             return new MappingClass(
@@ -252,7 +256,12 @@ public interface MappingParser {
         @Override public boolean isMethodToken() {
             return this.matcher.group("lineAndColumn") != null;
         }
-        @Override public String extractFrom() { return this.matcher.group("from"); }
+        @Override public String extractFrom() {
+            return this.matcher.group("from") + (isMethodToken()
+                ? parseTheseArguments(this.matcher.group("arguments"))
+                    + parseThisWeirdType(this.matcher.group("type"))
+                : "");
+        }
         @Override public MappingClass extractClass() {
             return new MappingClass(
                 parseThisWeirdType(this.matcher.group("to")),
