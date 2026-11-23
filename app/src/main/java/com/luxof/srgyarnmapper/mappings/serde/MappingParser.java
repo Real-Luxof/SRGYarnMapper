@@ -6,9 +6,12 @@ import com.luxof.srgyarnmapper.mappings.MappingField;
 import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
 
+import static com.luxof.srgyarnmapper.mappings.Mappings.ARGS_SEPERATOR_REGEX;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,11 +41,35 @@ public interface MappingParser {
     /** execute this at last. */
     public void finishParsing();
 
+    default String translateMethodType(String type) {
+        String[] argsAndRet = type.split("\\)");
+        String args = argsAndRet[0].substring(1);
+        String ret = argsAndRet[1];
+
+        return "(" + String.join(
+            "",
+            ARGS_SEPERATOR_REGEX.matcher(args).results()
+                .map(r -> r.group())
+                .map(s -> s.startsWith("L")
+                        ? "L" + quickAndDirtyMethodTypeTranslation(s.substring(1, s.length() - 1)) + ";"
+                        : s
+                )
+                .toList()
+        ) + ")" + (
+            ret.startsWith("L")
+                ? "L" + quickAndDirtyMethodTypeTranslation(ret.substring(1, ret.length() - 1)) + ";"
+                : ret
+        );
+    }
+    abstract String quickAndDirtyMethodTypeTranslation(String clazz);
+
     public static MappingParser TINYV2_PARSER = new MappingParser() {
         public final Pattern TINYV2_PATTERN = Pattern.compile("(?m)^\\s*((?<qualifier>\\S)\\t((?<type>([BCDFIJLSZ\\[]\\S*)|(\\(\\S+))\\t*)?(\\d+)?(?<from>\\S*)\\t+(?<to>\\S+))");
+        public final Pattern TINYV2_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^c\\t(?<from>\\S+)\\t(?<to>\\S+)");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
+        public Map<String, String> quickAndDirtyClassTranslatorMap = new HashMap<>();
 
         @Override
         public void beginParsing(String lines) {
@@ -50,6 +77,10 @@ public interface MappingParser {
             String[] header = lines.split("\n")[0].split("\t");
             this.left = MappingEnum.fromTINYV2(header[3]);
             this.right = MappingEnum.fromTINYV2(header[4]);
+            
+            TINYV2_ONLYCLASSES_PATTERN.matcher(lines).results().forEach(
+                r -> quickAndDirtyClassTranslatorMap.put(r.group("from"), r.group("to"))
+            );
         }
         @Override public MappingEnum getLeft() { return this.left; }
         @Override public MappingEnum getRight() { return this.right; }
@@ -85,10 +116,10 @@ public interface MappingParser {
             );
         }
         @Override public MappingMethod extractMethod() {
+            translateMethodType(this.matcher.group("type"));
             return new MappingMethod(
                 null,
-                this.matcher.group("type"),
-                this.matcher.group("to"),
+                this.matcher.group("to") + translateMethodType(this.matcher.group("type")),
                 new LinkedList<>(),
                 null,
                 null
@@ -103,13 +134,19 @@ public interface MappingParser {
             this.left = null;
             this.right = null;
         }
+
+        @Override public String quickAndDirtyMethodTypeTranslation(String clazz) {
+            return quickAndDirtyClassTranslatorMap.getOrDefault(clazz, clazz);
+        }
     };
 
     public static MappingParser TSRG2_PARSER = new MappingParser() {
         public final Pattern TSRG2_PATTERN = Pattern.compile("(?<from>\\S+) (?<to>((?<className>net\\S+) (?<srgcid>\\d+))|((?<fieldName>\\S+) (?<srgfid>\\d+)$)|((?<methodType>\\(\\S*\\)\\S+) (?<methodName>\\S+) (?<srgmid>\\d+)(?<isStatic>\\n\\t+static)?)|((?<parameterActualFrom>\\S+) (?<parameterName>\\S+) (?<srgpid>\\d+)))");
+        public final Pattern TSRG2_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<from>\\S+) (?<to>\\S+)");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
+        public Map<String, String> quickAndDirtyClassTranslatorMap = new HashMap<>();
 
         @Override
         public void beginParsing(String lines) {
@@ -117,6 +154,10 @@ public interface MappingParser {
             String[] header = lines.split("\n")[0].split(" ");
             this.left = MappingEnum.fromTSRG2(header[1]);
             this.right = MappingEnum.fromTSRG2(header[2]);
+            
+            TSRG2_ONLYCLASSES_PATTERN.matcher(lines).results().forEach(
+                r -> quickAndDirtyClassTranslatorMap.put(r.group("from"), r.group("to"))
+            );
         }
         @Override public MappingEnum getLeft() { return this.left; }
         @Override public MappingEnum getRight() { return this.right; }
@@ -154,8 +195,7 @@ public interface MappingParser {
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
                 null,
-                matcher.group("methodType"),
-                this.matcher.group("methodName"),
+                this.matcher.group("methodName") + translateMethodType(matcher.group("methodType")),
                 new LinkedList<>(),
                 Integer.parseInt(matcher.group("srgmid")),
                 matcher.group("isStatic") != null
@@ -173,19 +213,32 @@ public interface MappingParser {
             this.left = null;
             this.right = null;
         }
+
+        @Override public String quickAndDirtyMethodTypeTranslation(String clazz) {
+            return quickAndDirtyClassTranslatorMap.getOrDefault(clazz, clazz);
+        }
     };
 
     public static MappingParser PROGUARD_PARSER = new MappingParser() {
         private static final Pattern PROGUARD_PATTERN = Pattern.compile("(?m)^(\\h*((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+):?");
+        public final Pattern PROGUARD_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<from>\\S+) -> (?<to>\\S+)$");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
+        public Map<String, String> quickAndDirtyClassTranslatorMap = new HashMap<>();
 
         @Override
         public void beginParsing(String lines) {
             this.matcher = PROGUARD_PATTERN.matcher(lines);
             this.left = MappingEnum.OBF;
             this.right = MappingEnum.MOJMAP;
+            
+            PROGUARD_ONLYCLASSES_PATTERN.matcher(lines).results().forEach(
+                r -> quickAndDirtyClassTranslatorMap.put(
+                    parseThisWeirdType(r.group("from")),
+                    r.group("to")
+                )
+            );
         }
         @Override public MappingEnum getLeft() { return this.left; }
         @Override public MappingEnum getRight() { return this.right; }
@@ -218,9 +271,11 @@ public interface MappingParser {
         @Override public MappingMethod extractMethod() {
             return new MappingMethod(
                 this.matcher.group("lineAndColumn"),
-                parseTheseArguments(this.matcher.group("arguments"))
-                    + parseThisWeirdType(this.matcher.group("type")),
-                this.matcher.group("to"),
+                this.matcher.group("to")
+                    + translateMethodType(
+                        parseTheseArguments(this.matcher.group("arguments"))
+                            + parseThisWeirdType(this.matcher.group("type"))
+                    ),
                 new LinkedList<>(),
                 null,
                 null
@@ -233,7 +288,11 @@ public interface MappingParser {
             this.right = null;
         }
 
-        private String parseTheseArguments(String types) {
+        @Override public String quickAndDirtyMethodTypeTranslation(String clazz) {
+            return quickAndDirtyClassTranslatorMap.getOrDefault(clazz, clazz);
+        }
+
+        public String parseTheseArguments(String types) {
             return "(" +
                 String.join(
                     "",
@@ -244,7 +303,7 @@ public interface MappingParser {
                     )
                 + ")";
         }
-        private String parseThisWeirdType(String type) {
+        public String parseThisWeirdType(String type) {
             String prefix = "";
             String actualType = type;
             while (actualType.endsWith("[]")) {

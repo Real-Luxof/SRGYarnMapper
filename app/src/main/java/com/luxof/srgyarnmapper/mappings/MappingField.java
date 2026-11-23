@@ -3,7 +3,7 @@ package com.luxof.srgyarnmapper.mappings;
 import org.jspecify.annotations.Nullable;
 
 public record MappingField(
-    @Nullable String type,
+    String type,
     String name,
     @Nullable Integer srgID
-) implements SRGIDHolder, TypeHolder {}
+) implements SRGIDHolder {}

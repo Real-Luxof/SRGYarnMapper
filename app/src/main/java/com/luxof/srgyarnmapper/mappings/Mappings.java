@@ -9,9 +9,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /** use one of the static methods to create one of these. */
 public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClass> mappings) {
+    public static final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("\\[*([BCDFIJSZ]|L[^;]+;)");
+
     public MappingClass getClass(String className) {
         return mappings.getOrDefault(
             String.valueOf(className),
@@ -24,19 +27,20 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
     public MappingMethod getMethod(String className, String method) {
         for (var entry : getClass(className).methods()) {
+            String key = entry.getKey();
+            MappingMethod val = entry.getValue();
             // stringcmp gets tiring for the 'puter
             if (
-                entry.getKey().hashCode() == method.hashCode() &&
-                entry.getKey().equals(method)
+                key.hashCode() == method.hashCode() &&
+                key.equals(method)
             ) {
-                return entry.getValue();
+                return val;
             }
         }
         // sometimes they don't provide these two...
-        return method.equals("<clinit>") || method.equals("<init>")
+        return method.startsWith("<clinit>") || method.startsWith("<init>")
             ? new MappingMethod(
                 null,
-                "()V",
                 method,
                 List.of(),
                 null,
@@ -44,7 +48,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
             )
             // see reverseMethod's reason for doing something like this
             : new MappingMethod(
-                null, "()V", method, List.of(), null, null
+                null, method, List.of(), null, null
             );
     }
     public String translateMethod(String className, String method) {
@@ -83,20 +87,20 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         });*/
     }
     public String reverseMethod(String className, String outputMethod) {
+        System.out.printf("Searching for: %s:%s\n", className, outputMethod);
         for (var entry : getClass(className).methods()) {
-            if (
-                entry.getValue().name().hashCode() == outputMethod.hashCode() &&
-                entry.getValue().name().equals(outputMethod)
-            )
+            String methodName = entry.getValue().name();
+            System.out.printf("Testing: %s -> %s\n", entry.getKey(), methodName);
+            if (methodName.hashCode() == outputMethod.hashCode() && methodName.equals(outputMethod))
                 return entry.getKey();
         }
         // the mappings are picky about when they do and don't include <init> and <clinit>
         // and sometimes they skip certain methods (like valueOf() and shouldSkip()) because
         // they're already named
-        return outputMethod;
-        /*if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
-            return outputMethod;
-        throw new RuntimeException("Wtf " + className + ":" + outputMethod);*/
+        //return outputMethod;
+        //if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
+        //    return outputMethod;
+        throw new RuntimeException("Wtf " + className + ":" + outputMethod);
     }
     public String reverseField(String className, String outputField) {
         for (var entry : getClass(className).fields().entrySet()) {
@@ -212,9 +216,9 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
     }
 
     @Nullable
-    public static String yoinkType(TypeHolder... holders) {
-        for (TypeHolder holder : holders) {
-            if (holder.type() != null) return holder.type();
+    public static String yoinkType(MappingField... fields) {
+        for (MappingField field : fields) {
+            if (field.type() != null) return field.type();
         }
         return null;
     }

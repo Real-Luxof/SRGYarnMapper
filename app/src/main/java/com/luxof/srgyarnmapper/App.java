@@ -234,7 +234,7 @@ public class App {
                 MappingField fieldB;
                 try {
                     fieldNameW = B.translateField(clazzNameX, fieldNameX);
-                    fieldB = B.getField(clazzNameX, fieldNameX);;
+                    fieldB = B.getField(clazzNameX, fieldNameX);
                 } catch (NullPointerException npe) {
                     fieldNameW = fieldNameX;
                     fieldB = new MappingField(null, "", null);
@@ -243,7 +243,7 @@ public class App {
                 fieldsO.put(
                     fieldNameW,
                     new MappingField(
-                        Mappings.yoinkType(fieldA, fieldC, fieldB),
+                        fieldC.type(),
                         fieldA.name(),
                         Mappings.yoinkSRGID(fieldA, fieldC, fieldB)
                     )
@@ -262,7 +262,7 @@ public class App {
                     methodB = B.getMethod(clazzNameX, methodNameX);
                 } catch (NullPointerException npe) {
                     methodNameW = methodNameX;
-                    methodB = new MappingMethod(null, null, "", new LinkedList<>(), null, null);
+                    methodB = new MappingMethod(null, "", new LinkedList<>(), null, null);
                 }
 
                 LinkedList<Map.Entry<String, MappingParameter>> paramsO = new LinkedList<>();
@@ -286,7 +286,6 @@ public class App {
                     methodNameW,
                     new MappingMethod(
                         Mappings.yoinkLineAndColumn(methodA, methodC, methodB),
-                        Mappings.yoinkType(methodA, methodC, methodB),
                         methodA.name(),
                         List.copyOf(paramsO),
                         Mappings.yoinkSRGID(methodA, methodC, methodB),

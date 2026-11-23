@@ -6,6 +6,8 @@ import com.luxof.srgyarnmapper.mappings.MappingField;
 import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
 
+import static com.luxof.srgyarnmapper.mappings.Mappings.ARGS_SEPERATOR_REGEX;
+
 import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
@@ -29,7 +31,8 @@ public interface MappingSerializer {
             return String.format("\tf\t%s\t%s\t%s", field.type(), fieldKey, field.name());
         }
         @Override public @Nullable String serialize(String methodKey, MappingMethod method) {
-            return String.format("\tm\t%s\t%s\t%s", method.type(), methodKey, method.name());
+            String[] nameAndType = method.name().split("\\(");
+            return String.format("\tm\t%s\t%s\t%s", "(" + nameAndType[1], methodKey, nameAndType[0]);
         }
         @Override public @Nullable String serialize(int no, String paramKey, MappingParameter param) {
             return String.format("\t\tp\t%d\t%s\t%s", no, paramKey, param.name());
@@ -51,11 +54,12 @@ public interface MappingSerializer {
             return String.format("\t%s %s %d", fieldKey, field.name(), field.srgID());
         }
         @Override public @Nullable String serialize(String methodKey, MappingMethod method) {
+            String[] nameAndType = method.name().split("\\(");
             return String.format(
                 "\t%s %s %s %d%s",
                 methodKey,
-                method.type(),
-                method.name(),
+                "(" + nameAndType[1],
+                nameAndType[0],
                 method.srgID(),
                 (method.isStatic() != null && method.isStatic()) ? "\n\t\tstatic" : ""
             );
@@ -89,7 +93,9 @@ public interface MappingSerializer {
             );
         }
         @Override public @Nullable String serialize(String methodKey, MappingMethod method) {
-            String[] argsAndReturnType = separateArgsAndReturnType(method.type());
+            String[] argsAndReturnType = separateArgsAndReturnType(
+                method.name().substring(method.name().indexOf("("))
+            );
             return String.format(
                 "    %s:%s %s%s -> %s",
                 method.lineAndColumn(),
@@ -110,7 +116,6 @@ public interface MappingSerializer {
                 decompileToWeirdType(separated[1])
             };
         }
-        public final Pattern ARGS_SEPERATOR_REGEX = Pattern.compile("\\[*([BCDFIJSZ]|L[^;]+;)");
         public String decompileToWeirdArgs(String args) {
             return String.join(
                 ",",
