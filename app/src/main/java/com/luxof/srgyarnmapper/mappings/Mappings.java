@@ -87,20 +87,27 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         });*/
     }
     public String reverseMethod(String className, String outputMethod) {
-        System.out.printf("Searching for: %s:%s\n", className, outputMethod);
         for (var entry : getClass(className).methods()) {
             String methodName = entry.getValue().name();
-            System.out.printf("Testing: %s -> %s\n", entry.getKey(), methodName);
             if (methodName.hashCode() == outputMethod.hashCode() && methodName.equals(outputMethod))
                 return entry.getKey();
         }
         // the mappings are picky about when they do and don't include <init> and <clinit>
         // and sometimes they skip certain methods (like valueOf() and shouldSkip()) because
         // they're already named
-        //return outputMethod;
+        String[] outputMethodPieces = outputMethod.split("\\(|\\)");
+        String outputArgs = outputMethodPieces[1];
+        String outputReturn = outputMethodPieces[2];
+
+        return outputMethodPieces[0] +
+            String.join("", ARGS_SEPERATOR_REGEX.matcher(outputArgs).results()
+                .map(r -> r.group())
+                .map(s -> s.startsWith("L") ? "L" + reverseClass(s.substring(1, s.length() - 1)) + ";" : s)
+                .toList())
+            + (outputReturn.startsWith("L") ? "L" + reverseClass(outputReturn.substring(1, outputReturn.length() - 1)) + ";" : outputReturn);
         //if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
         //    return outputMethod;
-        throw new RuntimeException("Wtf " + className + ":" + outputMethod);
+        //throw new RuntimeException("Wtf " + className + ":" + outputMethod);
     }
     public String reverseField(String className, String outputField) {
         for (var entry : getClass(className).fields().entrySet()) {
