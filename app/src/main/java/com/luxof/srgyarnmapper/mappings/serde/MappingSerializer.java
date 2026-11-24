@@ -5,6 +5,7 @@ import com.luxof.srgyarnmapper.mappings.MappingEnum;
 import com.luxof.srgyarnmapper.mappings.MappingField;
 import com.luxof.srgyarnmapper.mappings.MappingMethod;
 import com.luxof.srgyarnmapper.mappings.MappingParameter;
+import com.luxof.srgyarnmapper.mappings.Mappings;
 
 import static com.luxof.srgyarnmapper.mappings.Mappings.ARGS_SEPERATOR_REGEX;
 
@@ -14,6 +15,8 @@ import org.jspecify.annotations.Nullable;
 
 /** Any of the methods here returning <code>null</code> mean "don't put a line here". */
 public interface MappingSerializer {
+    /** performs any init work required by the serializer. */
+    default void beginSerializing(Mappings mappings) {};
     public String getHeading(MappingEnum from, MappingEnum to);
     @Nullable public String serialize(String clazzKey, MappingClass clazz);
     @Nullable public String serialize(String fieldKey, MappingField field);
@@ -76,18 +79,28 @@ public interface MappingSerializer {
     };
 
     public static MappingSerializer PROGUARD_SERIALIZER = new MappingSerializer() {
+        public Mappings mappings;
+        @Override public void beginSerializing(Mappings mappings) { this.mappings = mappings; }
         @Override public String getHeading(MappingEnum from, MappingEnum to) {
             return from == MappingEnum.OBF && to == MappingEnum.MOJMAP
                 ? "# (c) 2020 Microsoft Corporation. These mappings are provided \"as-is\" and you bear the risk of using them. You may copy and use the mappings for development purposes, but you may not redistribute the mappings complete and unmodified. Microsoft makes no warranties, express or implied, with respect to the mappings provided here.  Use and modification of this document or the source code (in any form) of Minecraft: Java Edition is governed by the Minecraft End User License Agreement available at https://account.mojang.com/documents/minecraft_eula."
                 : "# heblo. lux here. use my mappings. sonic exe here. play my game";
         }
         @Override public @Nullable String serialize(String clazzKey, MappingClass clazz) {
-            return String.format("%s -> %s:", decompileToWeirdType(clazz.name()), clazzKey);
+            return String.format(
+                "%s -> %s:",
+                decompileToWeirdType("L" + clazz.name() + ";"),
+                decompileToWeirdType("L" + clazzKey + ";")
+            );
         }
         @Override public @Nullable String serialize(String fieldKey, MappingField field) {
             return String.format(
                 "    %s %s -> %s",
-                decompileToWeirdType(field.type()),
+                decompileToWeirdType(
+                    field.type().startsWith("L")
+                        ? mappings.translateClass(field.type().substring(1, field.type().length() - 1))
+                        : field.type()
+                ),
                 field.name(),
                 fieldKey
             );

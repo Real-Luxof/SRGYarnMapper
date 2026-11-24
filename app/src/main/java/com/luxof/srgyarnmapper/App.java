@@ -230,8 +230,12 @@ public class App {
                 String fieldNameX = C.reverseField(clazzNameX, fieldNameY);
                 String fieldNameW;
                 MappingField fieldA = fieldEntryA.getValue();
-                String fieldTypeX = fieldA.type();
                 MappingField fieldC = C.getField(clazzNameX, fieldNameX);
+				String fieldTypeX = fieldC != null
+					? fieldC.type()
+					: fieldA.type().startsWith("L")
+						? "L" + C.reverseClass(fieldA.type().substring(1, fieldA.type().length() - 1)) + ";"
+						: fieldA.type();
                 MappingField fieldB;
                 try {
                     fieldNameW = B.translateField(clazzNameX, fieldNameX);
@@ -244,12 +248,10 @@ public class App {
                 fieldsO.put(
                     fieldNameW,
                     new MappingField(
-                        // OH MY FUCKING GOD BRUH com/mojang/blaze3d/platform/GlStateManager$SourceFactor
-                        fieldB != null
-                            ? fieldB.type()
-                            : fieldTypeX.startsWith("L")
-                                ? "L" + B.translateClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
-                                : fieldTypeX,
+                        // OH MY FUCKING GOD BRUH
+                        fieldTypeX.startsWith("L")
+							? "L" + B.translateClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
+							: fieldTypeX,
                         fieldA.name(),
                         Mappings.yoinkSRGID(fieldA, fieldC, fieldB)
                     )
@@ -267,6 +269,7 @@ public class App {
                     methodNameW = B.translateMethod(clazzNameX, methodNameX);
                     methodB = B.getMethod(clazzNameX, methodNameX);
                 } catch (NullPointerException npe) {
+                    System.out.printf("What an unfortunate event. %s:%s could not be found in [%s].\n", clazzNameX, methodNameX, String.join(",", clazzB.methods().stream().map(e -> e.getKey() + " -> " + e.getValue().name()).toList()));
                     methodNameW = methodNameX;
                     methodB = new MappingMethod(null, "", new LinkedList<>(), null, null);
                 }
@@ -291,7 +294,7 @@ public class App {
                 methodsO.add(Map.entry(
                     methodNameW,
                     new MappingMethod(
-                        Mappings.yoinkLineAndColumn(methodA, methodC, methodB),
+                        Mappings.yoinkLineAndColumn(methodB, methodC, methodA),
                         methodA.name(),
                         List.copyOf(paramsO),
                         Mappings.yoinkSRGID(methodA, methodC, methodB),
