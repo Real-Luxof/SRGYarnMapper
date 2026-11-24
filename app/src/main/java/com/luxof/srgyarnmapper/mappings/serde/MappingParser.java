@@ -44,7 +44,9 @@ public interface MappingParser {
     default String translateMethodType(String type) {
         String[] argsAndRet = type.split("\\)");
         String args = argsAndRet[0].substring(1);
-        String ret = argsAndRet[1];
+        String retFull = argsAndRet[1];
+        String retArrays = retFull.substring(0, retFull.lastIndexOf("[") + 1);
+        String ret = retFull.substring(retFull.lastIndexOf("[") + 1);
 
         return "(" + String.join(
             "",
@@ -55,7 +57,7 @@ public interface MappingParser {
                         : s
                 )
                 .toList()
-        ) + ")" + (
+        ) + ")" + retArrays + (
             ret.startsWith("L")
                 ? "L" + quickAndDirtyMethodTypeTranslation(ret.substring(1, ret.length() - 1)) + ";"
                 : ret

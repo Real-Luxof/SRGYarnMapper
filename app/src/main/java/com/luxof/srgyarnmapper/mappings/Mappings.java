@@ -100,13 +100,16 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
         String[] outputMethodPieces = outputMethod.split("\\(|\\)");
         String outputArgs = outputMethodPieces[1];
         String outputReturn = outputMethodPieces[2];
+        String retArrays = outputReturn.substring(0, outputReturn.lastIndexOf("[") + 1);
+        String retNorm = outputReturn.substring(outputReturn.lastIndexOf("[") + 1);
 
         return outputMethodPieces[0] + "(" +
             String.join("", ARGS_SEPERATOR_REGEX.matcher(outputArgs).results()
                 .map(r -> r.group())
+                .flatMap(s -> s.startsWith("[") ? Stream.of(s.substring(0, s.lastIndexOf("[") + 1), s.substring(s.lastIndexOf("[") + 1)) : Stream.of(s))
                 .map(s -> s.startsWith("L") ? "L" + reverseClass(s.substring(1, s.length() - 1)) + ";" : s)
                 .toList())
-            + ")" + (outputReturn.startsWith("L") ? "L" + reverseClass(outputReturn.substring(1, outputReturn.length() - 1)) + ";" : outputReturn);
+            + ")" + retArrays + (retNorm.startsWith("L") ? "L" + reverseClass(retNorm.substring(1, retNorm.length() - 1)) + ";" : retNorm);
         //if (outputMethod.equals("<clinit>") || outputMethod.equals("<init>"))
         //    return outputMethod;
         //throw new RuntimeException("Wtf " + className + ":" + outputMethod);

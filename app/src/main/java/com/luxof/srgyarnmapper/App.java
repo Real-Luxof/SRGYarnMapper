@@ -233,8 +233,8 @@ public class App {
                 MappingField fieldC = C.getField(clazzNameX, fieldNameX);
 				String fieldTypeX = fieldC != null
 					? fieldC.type()
-					: fieldA.type().startsWith("L")
-						? "L" + C.reverseClass(fieldA.type().substring(1, fieldA.type().length() - 1)) + ";"
+					: fieldA.type().contains("L")
+						? fieldA.type().substring(0, fieldA.type().indexOf("L")) + "L" + C.reverseClass(fieldA.type().substring(fieldA.type().indexOf("L") + 1, fieldA.type().length() - 1)) + ";"
 						: fieldA.type();
                 MappingField fieldB;
                 try {
@@ -249,8 +249,8 @@ public class App {
                     fieldNameW,
                     new MappingField(
                         // OH MY FUCKING GOD BRUH
-                        fieldTypeX.startsWith("L")
-							? "L" + B.translateClass(fieldTypeX.substring(1, fieldTypeX.length() - 1)) + ";"
+                        fieldTypeX.contains("L")
+							? fieldTypeX.substring(0, fieldTypeX.indexOf("L")) + "L" + B.translateClass(fieldTypeX.substring(fieldTypeX.indexOf("L") + 1, fieldTypeX.length() - 1)) + ";"
 							: fieldTypeX,
                         fieldA.name(),
                         Mappings.yoinkSRGID(fieldA, fieldC, fieldB)

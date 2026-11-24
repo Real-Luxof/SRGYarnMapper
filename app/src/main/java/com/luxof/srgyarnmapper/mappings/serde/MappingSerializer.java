@@ -94,12 +94,13 @@ public interface MappingSerializer {
             );
         }
         @Override public @Nullable String serialize(String fieldKey, MappingField field) {
+            String type = field.type();
             return String.format(
                 "    %s %s -> %s",
                 decompileToWeirdType(
-                    field.type().startsWith("L")
-                        ? "L" + mappings.translateClass(field.type().substring(1, field.type().length() - 1)) + ";"
-                        : field.type()
+                    type.contains("L")
+                        ? type.substring(0, type.indexOf("L")) + "L" + mappings.translateClass(type.substring(type.indexOf("L") + 1, type.length() - 1)) + ";"
+                        : type
                 ),
                 field.name(),
                 fieldKey
