@@ -224,8 +224,8 @@ public interface MappingParser {
     };
 
     public static MappingParser PROGUARD_PARSER = new MappingParser() {
-        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(?m)^(\\h*((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+):?");
-        public final Pattern PROGUARD_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<from>\\S+) -> (?<to>\\S+)$");
+        private static final Pattern PROGUARD_PATTERN = Pattern.compile("(((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+):?");
+        public final Pattern PROGUARD_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<mojmap>\\S+) -> (?<obf>\\S+)$");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
@@ -239,8 +239,8 @@ public interface MappingParser {
             
             PROGUARD_ONLYCLASSES_PATTERN.matcher(lines).results().forEach(
                 r -> quickAndDirtyClassTranslatorMap.put(
-                    parseThisWeirdType(r.group("from")),
-                    r.group("to")
+                    parseThisWeirdType(r.group("mojmap")),
+                    parseThisWeirdType(r.group("obf"))
                 )
             );
         }
@@ -251,7 +251,7 @@ public interface MappingParser {
             return this.matcher.group("type") == null;
         }
         @Override public boolean isFieldToken() {
-            return this.matcher.group("arguments") != null;
+            return this.matcher.group("type") != null && this.matcher.group("lineAndColumn") == null;
         }
         @Override public boolean isMethodToken() {
             return this.matcher.group("lineAndColumn") != null;
@@ -263,8 +263,10 @@ public interface MappingParser {
                 : "");
         }
         @Override public MappingClass extractClass() {
+            String to = parseThisWeirdType(this.matcher.group("to"));
             return new MappingClass(
-                parseThisWeirdType(this.matcher.group("to")),
+                // everyone stores their classes as a/b/c not La/b/c; apparently
+                to.substring(1, to.length() - 1),
                 new HashMap<>(),
                 new LinkedList<>(),
                 null
@@ -305,7 +307,7 @@ public interface MappingParser {
             return "(" +
                 String.join(
                     "",
-                    List.of(types.substring(0, types.length() - 1).split(Pattern.quote(",")))
+                    List.of(types.substring(1, types.length() - 1).split(Pattern.quote(",")))
                         .stream()
                         .map(this::parseThisWeirdType)
                         .toList()
@@ -319,7 +321,7 @@ public interface MappingParser {
                 prefix += "[";
                 actualType = actualType.substring(0, actualType.length() - 2);
             }
-            return prefix + switch (type) {
+            return prefix + switch (actualType) {
                 case "byte" -> "B";
                 case "char" -> "C";
                 case "double" -> "D";
@@ -329,6 +331,7 @@ public interface MappingParser {
                 case "short" -> "S";
                 case "boolean" -> "Z";
                 case "void" -> "V";
+                case "" -> "";
                 default -> "L" + type.replaceAll(Pattern.quote("."), "/") + ";";
             };
         }
