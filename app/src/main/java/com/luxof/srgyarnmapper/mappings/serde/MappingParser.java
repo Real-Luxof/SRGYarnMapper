@@ -225,7 +225,7 @@ public interface MappingParser {
 
     public static MappingParser PROGUARD_PARSER = new MappingParser() {
         private static final Pattern PROGUARD_PATTERN = Pattern.compile("(((?<lineAndColumn>\\d+:\\d+):)?(?<type>\\S+) )?(?<to>[^\\(\\s]+)(?<arguments>\\([^\\)]*\\))? -> (?<from>[^:\\s]+):?");
-        public final Pattern PROGUARD_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<mojmap>\\S+) -> (?<obf>\\S+)$");
+        public final Pattern PROGUARD_ONLYCLASSES_PATTERN = Pattern.compile("(?m)^(?<mojmap>\\S+) -> (?<obf>[^:\\s]+):$");
         public Matcher matcher;
         public MappingEnum left;
         public MappingEnum right;
@@ -238,10 +238,14 @@ public interface MappingParser {
             this.right = MappingEnum.MOJMAP;
             
             PROGUARD_ONLYCLASSES_PATTERN.matcher(lines).results().forEach(
-                r -> quickAndDirtyClassTranslatorMap.put(
-                    parseThisWeirdType(r.group("mojmap")),
-                    parseThisWeirdType(r.group("obf"))
-                )
+                r -> {
+                    String key = parseThisWeirdType(r.group("mojmap"));
+                    String val = parseThisWeirdType(r.group("obf"));
+                    quickAndDirtyClassTranslatorMap.put(
+                        key.substring(1, key.length() - 1),
+                        val.substring(1, val.length() - 1)
+                    );
+                }
             );
         }
         @Override public MappingEnum getLeft() { return this.left; }
@@ -258,8 +262,10 @@ public interface MappingParser {
         }
         @Override public String extractFrom() {
             return this.matcher.group("from") + (isMethodToken()
-                ? parseTheseArguments(this.matcher.group("arguments"))
-                    + parseThisWeirdType(this.matcher.group("type"))
+                ? translateMethodType(
+                    parseTheseArguments(this.matcher.group("arguments"))
+                        + parseThisWeirdType(this.matcher.group("type"))
+                )
                 : "");
         }
         @Override public MappingClass extractClass() {
@@ -283,10 +289,8 @@ public interface MappingParser {
             return new MappingMethod(
                 this.matcher.group("lineAndColumn"),
                 this.matcher.group("to")
-                    + translateMethodType(
-                        parseTheseArguments(this.matcher.group("arguments"))
-                            + parseThisWeirdType(this.matcher.group("type"))
-                    ),
+                    + parseTheseArguments(this.matcher.group("arguments"))
+                        + parseThisWeirdType(this.matcher.group("type")),
                 new LinkedList<>(),
                 null,
                 null

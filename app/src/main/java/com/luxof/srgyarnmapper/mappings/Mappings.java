@@ -126,6 +126,7 @@ public record Mappings(MappingEnum from, MappingEnum to, Map<String, MappingClas
 
 
     public String to(MappingSerializer serializer) {
+        serializer.beginSerializing(this);
         List<String> buf = new ArrayList<>(List.of(serializer.getHeading(from, to)));
 
         mappings.forEach((clazzKey, clazz) -> {
