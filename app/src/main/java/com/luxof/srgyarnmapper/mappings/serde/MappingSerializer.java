@@ -98,7 +98,7 @@ public interface MappingSerializer {
                 "    %s %s -> %s",
                 decompileToWeirdType(
                     field.type().startsWith("L")
-                        ? mappings.translateClass(field.type().substring(1, field.type().length() - 1))
+                        ? "L" + mappings.translateClass(field.type().substring(1, field.type().length() - 1)) + ";"
                         : field.type()
                 ),
                 field.name(),
@@ -110,8 +110,8 @@ public interface MappingSerializer {
                 method.name().substring(method.name().indexOf("("))
             );
             return String.format(
-                "    %s:%s %s%s -> %s",
-                method.lineAndColumn(),
+                "    %s%s %s%s -> %s",
+                method.lineAndColumn() == null ? "" : method.lineAndColumn() + ":",
                 argsAndReturnType[1],
                 method.name().substring(0, method.name().indexOf("(")),
                 argsAndReturnType[0],
