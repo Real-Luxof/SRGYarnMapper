@@ -110,7 +110,7 @@ public class App {
             );*/
 
             Files.writeString(
-                Path.of("srgtoyarn.tsrg2"),
+                Path.of("srgtoyarn.tsrg"),
                 srg_to_yarn.to(MappingSerializer.TSRG2_SERIALIZER)
             );
             Files.writeString(
@@ -125,6 +125,7 @@ public class App {
 
     public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
     public static String readNestedFileInZipFromURI(URI uri, Path saveZipTo, String nestedPath) {
+        saveZipTo.toFile().deleteOnExit();
         try {
             ZipFile zip = new ZipFile(downloadFromURI(uri, saveZipTo));
             String fileContents = new String(
